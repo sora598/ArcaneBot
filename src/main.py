@@ -48,6 +48,9 @@ def load_notify_store() -> dict:
         with open(NOTIFY_STORE_PATH, "r", encoding="utf-8") as f:
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
+        # File missing or corrupt — create a blank notify store
+        with open(NOTIFY_STORE_PATH, "w", encoding="utf-8") as f:
+            json.dump({}, f, indent=2)
         return {}
 
 
@@ -162,7 +165,9 @@ def load_trade_store():
             if isinstance(trades, dict):
                 return trades
     except (FileNotFoundError, json.JSONDecodeError):
-        pass
+        # File missing or corrupt — create a blank trade store
+        with open(TRADE_STORE_PATH, "w", encoding="utf-8") as f:
+            json.dump({"trades": {}}, f, indent=2)
     return {}
 
 
@@ -207,7 +212,9 @@ def load_item_list():
                     cleaned.append(value)
                 return cleaned
     except (FileNotFoundError, json.JSONDecodeError):
-        pass
+        # File missing or corrupt — create a blank item list
+        with open(ITEM_LIST_PATH, "w", encoding="utf-8") as f:
+            json.dump({"items": []}, f, indent=2)
     return []
 
 
@@ -465,9 +472,15 @@ async def restore_active_trades():
     print(f"Restored active trades: {restored}; expired queued: {expired}")
 
 def load_config():
-    with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    return _int_keys(data)
+    try:
+        with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+            return _int_keys(json.load(f))
+    except (FileNotFoundError, json.JSONDecodeError):
+        # File missing or corrupt — create a fresh empty config
+        default = {}
+        with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+            json.dump(default, f, indent=4)
+        return default
 
 def save_config(config):
     # Convert all int keys to strings for JSON serialization
@@ -771,6 +784,9 @@ def load_welcome_config() -> dict:
         with open(WELCOME_STORE_PATH, "r", encoding="utf-8") as f:
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
+        # File missing or corrupt — create a blank welcome config
+        with open(WELCOME_STORE_PATH, "w", encoding="utf-8") as f:
+            json.dump({}, f, indent=2)
         return {}
 
 
