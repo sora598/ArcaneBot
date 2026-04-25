@@ -202,11 +202,12 @@ async def on_member_join(member: discord.Member):
         print(f"Missing permission to send welcome message in {welcome_channel.id}")
 
     try:
-        await redirect_channel.send(
-            f"{member.mention} welcome! Please read the rules above and continue in this channel to get started."
+        await welcome_channel.send(
+            f"{member.mention} welcome! Please continue in {redirect_channel.mention} to get started.",
+            delete_after=60,
         )
     except discord.Forbidden:
-        print(f"Missing permission to send redirect message in {redirect_channel.id}")
+        print(f"Missing permission to send follow-up welcome message in {welcome_channel.id}")
 
 
 async def setup(bot: commands.Bot):
