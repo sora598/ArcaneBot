@@ -131,7 +131,7 @@ async def setup_trading(
 
     embed = discord.Embed(
         title="🤝 Trading Channel Access",
-        description=f"Want access to {trading_channel.mention}?\n\nClick the button below to get the trading role. Click again to remove it.",
+        description=f"Want access to Trading channel?\n\nClick the button below to get the trading role. Click again to remove it.",
         color=discord.Color.gold(),
     )
     embed.set_footer(text="Trading access is toggled by the button below.")
