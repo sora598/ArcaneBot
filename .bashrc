@@ -1,1 +1,1 @@
-alias devrun='py-hot-reload --ignore-venv-and-python-lib -ip="*.log;tmp/*;data/*;.pytest_cache/*;.venv/*;tests/*;src/*.json" /src/main.py'
+alias devrun='py-hot-reload --ignore-venv-and-python-lib -ip="*.log;tmp/*;data/*;src/__pycache__/*;.pytest_cache/*;.venv/*;tests/*;src/*.json" /src/main.py'
