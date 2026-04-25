@@ -25,6 +25,7 @@ EXTENSIONS = [
     "cogs.welcome",
     "cogs.trading_access",
     "cogs.announce",
+    "cogs.voice_channels",
 ]
 
 SYNCED = False
