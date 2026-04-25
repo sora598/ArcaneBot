@@ -3,3 +3,9 @@ __pycache__
 /.venv
 /src/*.json
 !/src/item_list.json
+
+# Testing files
+/tests/
+/pytest.ini
+.pytest_cache/
+.coverage
