@@ -7,15 +7,6 @@ import discord
 from discord.ext import commands
 from dotenv import load_dotenv
 
-load_dotenv()
-TOKEN = os.getenv("BOT_TOKEN")
-
-intents = discord.Intents.default()
-intents.guilds = True
-intents.members = True
-intents.reactions = True
-
-bot = commands.Bot(command_prefix="!", intents=intents)
 
 EXTENSIONS = [
     "cogs.help",
@@ -32,37 +23,71 @@ EXTENSIONS = [
 SYNCED = False
 
 
-@bot.event
-async def setup_hook():
-    for extension in EXTENSIONS:
-        await bot.load_extension(extension)
+def create_bot() -> commands.Bot:
+    intents = discord.Intents.default()
+    intents.guilds = True
+    intents.members = True
+    intents.reactions = True
+
+    bot = commands.Bot(
+        command_prefix="!",
+        intents=intents
+    )
+
+    @bot.event
+    async def setup_hook():
+        for extension in EXTENSIONS:
+            await bot.load_extension(extension)
+
+    @bot.event
+    async def on_ready():
+        global SYNCED
+
+        print(f"Logged in as {bot.user}")
+
+        if SYNCED:
+            return
+
+        try:
+            synced = await bot.tree.sync()
+            print(f"Globally synced {len(synced)} slash commands.")
+
+            for guild in bot.guilds:
+                try:
+                    bot.tree.copy_global_to(guild=guild)
+                    guild_synced = await bot.tree.sync(guild=guild)
+                    print(
+                        f"Guild sync ({guild.id}) -> "
+                        f"{len(guild_synced)} commands"
+                    )
+                except Exception as guild_error:
+                    print(
+                        f"Guild sync failed for "
+                        f"{guild.id}: {guild_error}"
+                    )
+
+        except Exception as error:
+            print(f"Failed to sync slash commands: {error}")
+
+        SYNCED = True
+
+    return bot
 
 
-@bot.event
-async def on_ready():
-    global SYNCED
-    print(f"Logged in as {bot.user}")
-    if SYNCED:
-        return
+def main():
+    load_dotenv()
 
-    try:
-        synced = await bot.tree.sync()
-        print(f"Globally synced {len(synced)} slash commands.")
+    TOKEN = os.getenv("BOT_TOKEN")
 
-        for guild in bot.guilds:
-            try:
-                bot.tree.copy_global_to(guild=guild)
-                guild_synced = await bot.tree.sync(guild=guild)
-                print(f"Guild sync ({guild.id}) -> {len(guild_synced)} commands")
-            except Exception as guild_error:
-                print(f"Guild sync failed for {guild.id}: {guild_error}")
-    except Exception as error:
-        print(f"Failed to sync slash commands: {error}")
+    if not TOKEN:
+        raise ValueError(
+            "BOT_TOKEN not set in environment variables."
+        )
 
-    SYNCED = True
+    bot = create_bot()
+
+    bot.run(TOKEN)
 
 
 if __name__ == "__main__":
-    if not TOKEN:
-        raise ValueError("BOT_TOKEN not set in environment variables.")
-    bot.run(TOKEN)
+    main()
