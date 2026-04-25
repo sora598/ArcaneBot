@@ -65,6 +65,7 @@ async def sea_beast_hunt_announcement(
             "❌ Invalid link. Please provide a valid Roblox private server share link.\n"
             "It should look like: `https://www.roblox.com/share?code=...&type=Server`",
             ephemeral=True,
+            delete_after=30,
         )
         return
 
@@ -132,6 +133,7 @@ async def sea_beast_hunt_announcement_error(interaction: discord.Interaction, er
         await interaction.response.send_message(
             "❌ This command is restricted to server administrators.",
             ephemeral=True,
+            delete_after=30,
         )
 
 

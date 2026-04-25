@@ -37,6 +37,7 @@ class TradingAccessView(ui.View):
             await interaction.response.send_message(
                 "The trading role no longer exists. Please ask an admin to re-run `/setuptrading`.",
                 ephemeral=True,
+                delete_after=30,
             )
             return
 
@@ -47,20 +48,23 @@ class TradingAccessView(ui.View):
                 await interaction.response.send_message(
                     f"✅ {role.mention} removed. You no longer have access to the trading channel.",
                     ephemeral=True,
+                    delete_after=30,
                 )
             else:
                 await member.add_roles(role)
                 await interaction.response.send_message(
                     f"✅ {role.mention} granted! You now have access to the trading channel.",
                     ephemeral=True,
+                    delete_after=30,
                 )
         except discord.Forbidden:
             await interaction.response.send_message(
                 "I don't have permission to assign that role. Make sure my role is above the trading role.",
                 ephemeral=True,
+                delete_after=30,
             )
         except discord.HTTPException as e:
-            await interaction.response.send_message(f"Something went wrong: `{e}`", ephemeral=True)
+            await interaction.response.send_message(f"Something went wrong: `{e}`", ephemeral=True, delete_after=30)
 
 
 @app_commands.command(name="setuptrading", description="Create a private trading channel + access role and post the opt-in embed.")
@@ -95,7 +99,7 @@ async def setup_trading(
                 reason="Trading access role created by /setuptrading",
             )
         except discord.Forbidden:
-            await interaction.followup.send("I don't have permission to create roles.", ephemeral=True)
+            await interaction.followup.send("I don't have permission to create roles.", ephemeral=True, delete_after=30)
             return
 
     trading_channel = None
@@ -116,7 +120,7 @@ async def setup_trading(
                 reason="Private trading channel created by /setuptrading",
             )
         except discord.Forbidden:
-            await interaction.followup.send("I don't have permission to create channels.", ephemeral=True)
+            await interaction.followup.send("I don't have permission to create channels.", ephemeral=True, delete_after=30)
             return
     else:
         try:
@@ -152,6 +156,7 @@ async def setup_trading(
     await interaction.followup.send(
         f"Done! Role: {trading_role.mention}, Channel: {trading_channel.mention}, Opt-in embed posted in: {post_channel.mention}",
         ephemeral=True,
+        delete_after=30,
     )
 
 
@@ -161,6 +166,7 @@ async def setup_trading_error(interaction: discord.Interaction, error: app_comma
         await interaction.response.send_message(
             "❌ You need the **Administrator** permission to use this command.",
             ephemeral=True,
+            delete_after=30,
         )
 
 import time

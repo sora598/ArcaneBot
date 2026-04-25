@@ -71,7 +71,7 @@ class HelpPager(ui.View):
 @app_commands.command(name="help", description="Show the slash command help menu.")
 async def help_command(interaction: discord.Interaction):
     view = HelpPager()
-    await interaction.response.send_message(embed=view._build_embed(), view=view, ephemeral=True)
+    await interaction.response.send_message(embed=view._build_embed(), view=view, ephemeral=True, delete_after=30)
 
 
 async def setup(bot: commands.Bot):

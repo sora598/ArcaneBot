@@ -101,7 +101,7 @@ async def vc_help(interaction: discord.Interaction):
         inline=False,
     )
 
-    await interaction.response.send_message(embed=embed, ephemeral=True)
+    await interaction.response.send_message(embed=embed, ephemeral=True, delete_after=30)
 
 
 @vc_group.command(name="create", description="Create a voice channel with a custom user limit.")
@@ -112,7 +112,7 @@ async def create_voice_channel(
     limit: app_commands.Range[int, 0, 99] = 0,
 ):
     if interaction.guild is None:
-        await interaction.response.send_message("This command can only be used in a server.", ephemeral=True)
+        await interaction.response.send_message("This command can only be used in a server.", ephemeral=True, delete_after=30)
         return
 
     await interaction.response.defer(ephemeral=True)
@@ -137,18 +137,21 @@ async def create_voice_channel(
         await interaction.followup.send(
             "I don't have permission to create voice channels. Please grant **Manage Channels**.",
             ephemeral=True,
+            delete_after=30,
         )
         return
     except discord.HTTPException as exc:
         await interaction.followup.send(
             f"Failed to create voice channel: `{exc}`",
             ephemeral=True,
+            delete_after=30,
         )
         return
 
     await interaction.followup.send(
         f"✅ Created {voice_channel.mention} with limit **{limit if limit > 0 else 'unlimited'}**.",
         ephemeral=True,
+        delete_after=30,
     )
 
     VOICE_OWNERS[str(voice_channel.id)] = {
@@ -169,39 +172,39 @@ async def create_voice_channel(
 async def vc_lock(interaction: discord.Interaction):
     channel, error = get_user_controlled_voice_channel(interaction)
     if error:
-        await interaction.response.send_message(error, ephemeral=True)
+        await interaction.response.send_message(error, ephemeral=True, delete_after=30)
         return
 
     try:
         await channel.set_permissions(interaction.guild.default_role, connect=False)
-        await interaction.response.send_message(f"🔒 Locked {channel.mention}.", ephemeral=True)
+        await interaction.response.send_message(f"🔒 Locked {channel.mention}.", ephemeral=True, delete_after=30)
     except discord.Forbidden:
-        await interaction.response.send_message("I don't have permission to edit channel permissions.", ephemeral=True)
+        await interaction.response.send_message("I don't have permission to edit channel permissions.", ephemeral=True, delete_after=30)
     except discord.HTTPException as exc:
-        await interaction.response.send_message(f"Failed to lock channel: `{exc}`", ephemeral=True)
+        await interaction.response.send_message(f"Failed to lock channel: `{exc}`", ephemeral=True, delete_after=30)
 
 
 @vc_group.command(name="unlock", description="Unlock your creator voice channel (members can join again).")
 async def vc_unlock(interaction: discord.Interaction):
     channel, error = get_user_controlled_voice_channel(interaction)
     if error:
-        await interaction.response.send_message(error, ephemeral=True)
+        await interaction.response.send_message(error, ephemeral=True, delete_after=30)
         return
 
     try:
         await channel.set_permissions(interaction.guild.default_role, connect=True)
-        await interaction.response.send_message(f"🔓 Unlocked {channel.mention}.", ephemeral=True)
+        await interaction.response.send_message(f"🔓 Unlocked {channel.mention}.", ephemeral=True, delete_after=30)
     except discord.Forbidden:
-        await interaction.response.send_message("I don't have permission to edit channel permissions.", ephemeral=True)
+        await interaction.response.send_message("I don't have permission to edit channel permissions.", ephemeral=True, delete_after=30)
     except discord.HTTPException as exc:
-        await interaction.response.send_message(f"Failed to unlock channel: `{exc}`", ephemeral=True)
+        await interaction.response.send_message(f"Failed to unlock channel: `{exc}`", ephemeral=True, delete_after=30)
 
 
 @vc_group.command(name="hide", description="Hide your creator voice channel from non-admin members.")
 async def vc_hide(interaction: discord.Interaction):
     channel, error = get_user_controlled_voice_channel(interaction)
     if error:
-        await interaction.response.send_message(error, ephemeral=True)
+        await interaction.response.send_message(error, ephemeral=True, delete_after=30)
         return
 
     try:
@@ -209,27 +212,28 @@ async def vc_hide(interaction: discord.Interaction):
         await interaction.response.send_message(
             f"🙈 Hid {channel.mention} from regular members (admins still have access).",
             ephemeral=True,
+            delete_after=30,
         )
     except discord.Forbidden:
-        await interaction.response.send_message("I don't have permission to edit channel permissions.", ephemeral=True)
+        await interaction.response.send_message("I don't have permission to edit channel permissions.", ephemeral=True, delete_after=30)
     except discord.HTTPException as exc:
-        await interaction.response.send_message(f"Failed to hide channel: `{exc}`", ephemeral=True)
+        await interaction.response.send_message(f"Failed to hide channel: `{exc}`", ephemeral=True, delete_after=30)
 
 
 @vc_group.command(name="show", description="Show your creator voice channel to members again.")
 async def vc_show(interaction: discord.Interaction):
     channel, error = get_user_controlled_voice_channel(interaction)
     if error:
-        await interaction.response.send_message(error, ephemeral=True)
+        await interaction.response.send_message(error, ephemeral=True, delete_after=30)
         return
 
     try:
         await channel.set_permissions(interaction.guild.default_role, view_channel=True)
-        await interaction.response.send_message(f"👁️ Made {channel.mention} visible again.", ephemeral=True)
+        await interaction.response.send_message(f"👁️ Made {channel.mention} visible again.", ephemeral=True, delete_after=30)
     except discord.Forbidden:
-        await interaction.response.send_message("I don't have permission to edit channel permissions.", ephemeral=True)
+        await interaction.response.send_message("I don't have permission to edit channel permissions.", ephemeral=True, delete_after=30)
     except discord.HTTPException as exc:
-        await interaction.response.send_message(f"Failed to show channel: `{exc}`", ephemeral=True)
+        await interaction.response.send_message(f"Failed to show channel: `{exc}`", ephemeral=True, delete_after=30)
 
 
 async def on_voice_state_update(member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
@@ -277,7 +281,7 @@ async def vc_limit(
     channel, error = get_user_controlled_voice_channel(interaction)
 
     if error:
-        await interaction.response.send_message(error, ephemeral=True)
+        await interaction.response.send_message(error, ephemeral=True, delete_after=30)
         return
 
     try:
@@ -286,19 +290,22 @@ async def vc_limit(
         await interaction.response.send_message(
             f"👥 Set user limit of {channel.mention} to "
             f"**{limit if limit > 0 else 'unlimited'}**.",
-            ephemeral=True
+            ephemeral=True,
+            delete_after=30,
         )
 
     except discord.Forbidden:
         await interaction.response.send_message(
             "I don't have permission to edit this voice channel.",
-            ephemeral=True
+            ephemeral=True,
+            delete_after=30,
         )
 
     except discord.HTTPException as exc:
         await interaction.response.send_message(
             f"Failed to update user limit: `{exc}`",
-            ephemeral=True
+            ephemeral=True,
+            delete_after=30,
         )
         
 async def setup(bot: commands.Bot):

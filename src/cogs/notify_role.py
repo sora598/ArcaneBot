@@ -47,7 +47,7 @@ class NotifyRoleButtonView(ui.View):
     @ui.button(label="Get Notified!", style=discord.ButtonStyle.primary, custom_id="notify_role_button")
     async def notify_button(self, interaction: discord.Interaction, button: ui.Button):
         if interaction.guild is None:
-            await interaction.response.send_message("This button only works in a server.", ephemeral=True)
+            await interaction.response.send_message("This button only works in a server.", ephemeral=True, delete_after=30)
             return
 
         role = interaction.guild.get_role(self.role_id)
@@ -55,6 +55,7 @@ class NotifyRoleButtonView(ui.View):
             await interaction.response.send_message(
                 "The notification role no longer exists. Please ask an admin to re-run `/notifyrole`.",
                 ephemeral=True,
+                delete_after=30,
             )
             return
 
@@ -62,22 +63,25 @@ class NotifyRoleButtonView(ui.View):
         try:
             if role in member.roles:
                 await member.remove_roles(role)
-                await interaction.response.send_message(f"{role.mention} role removed.", ephemeral=True)
+                await interaction.response.send_message(f"{role.mention} role removed.", ephemeral=True, delete_after=30)
             else:
                 await member.add_roles(role)
                 await interaction.response.send_message(
                     f"{role.mention} Role Obtained! You will be notified if someone starts a sea beast hunt!",
                     ephemeral=True,
+                    delete_after=30,
                 )
         except discord.Forbidden:
             await interaction.response.send_message(
                 "Something went wrong please try again later.",
                 ephemeral=True,
+                delete_after=30,
             )
         except discord.HTTPException as e:
             await interaction.response.send_message(
                 f"Something went wrong while updating your role: `{e}`",
                 ephemeral=True,
+                delete_after=30,
             )
 
 
@@ -86,13 +90,14 @@ class NotifyRoleButtonView(ui.View):
 @app_commands.checks.has_permissions(administrator=True)
 async def notifyrole(interaction: discord.Interaction, role: discord.Role):
     if interaction.guild is None:
-        await interaction.response.send_message("This command can only be used in a server.", ephemeral=True)
+        await interaction.response.send_message("This command can only be used in a server.", ephemeral=True, delete_after=30)
         return
 
     if not can_manage_role(interaction.guild, role):
         await interaction.response.send_message(
             "I can't manage that role. Make sure it isn't managed/default and that my highest role is above it.",
             ephemeral=True,
+            delete_after=30,
         )
         return
 
@@ -118,7 +123,7 @@ async def notifyrole(interaction: discord.Interaction, role: discord.Role):
     if BOT is not None:
         BOT.add_view(view, message_id=message.id)
 
-    await interaction.followup.send("✅ Notification role embed posted!", ephemeral=True)
+    await interaction.followup.send("✅ Notification role embed posted!", ephemeral=True, delete_after=30)
 
 
 @notifyrole.error
@@ -127,6 +132,7 @@ async def notifyrole_error(interaction: discord.Interaction, error: app_commands
         await interaction.response.send_message(
             "❌ This command is restricted to server administrators.",
             ephemeral=True,
+            delete_after=30,
         )
 
 

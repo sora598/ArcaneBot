@@ -50,7 +50,7 @@ class ReactionRoleButtonView(ui.View):
     async def toggle_role(self, interaction: discord.Interaction, button: ui.Button):
         guild = interaction.guild
         if guild is None:
-            await interaction.response.send_message("This button only works in a server.", ephemeral=True)
+            await interaction.response.send_message("This button only works in a server.", ephemeral=True, delete_after=30)
             return
 
         role = guild.get_role(self.role_id)
@@ -58,6 +58,7 @@ class ReactionRoleButtonView(ui.View):
             await interaction.response.send_message(
                 "This role no longer exists. Please ask an admin to repost the message.",
                 ephemeral=True,
+                delete_after=30,
             )
             return
 
@@ -65,6 +66,7 @@ class ReactionRoleButtonView(ui.View):
             await interaction.response.send_message(
                 "I can't manage that role anymore. My highest role may be below it.",
                 ephemeral=True,
+                delete_after=30,
             )
             return
 
@@ -72,17 +74,18 @@ class ReactionRoleButtonView(ui.View):
         try:
             if role in member.roles:
                 await member.remove_roles(role)
-                await interaction.response.send_message(f"{role.mention} removed.", ephemeral=True)
+                await interaction.response.send_message(f"{role.mention} removed.", ephemeral=True, delete_after=30)
             else:
                 await member.add_roles(role)
-                await interaction.response.send_message(f"{role.mention} granted, you can now view the available channels in the server.\n some roles might require additional steps", ephemeral=True)
+                await interaction.response.send_message(f"{role.mention} granted, you can now view the available channels in the server.\n some roles might require additional steps", ephemeral=True, delete_after=30)
         except discord.Forbidden:
             await interaction.response.send_message(
                 "I don't have permission to update roles. Check my role hierarchy and permissions.",
                 ephemeral=True,
+                delete_after=30,
             )
         except discord.HTTPException as e:
-            await interaction.response.send_message(f"Something went wrong: `{e}`", ephemeral=True)
+            await interaction.response.send_message(f"Something went wrong: `{e}`", ephemeral=True, delete_after=30)
 
 
 class ReactionRolePostCog(commands.Cog):
@@ -111,13 +114,14 @@ class ReactionRolePostCog(commands.Cog):
     async def set_reactionrole(self, interaction: discord.Interaction, message: str, role: discord.Role):
         """Post a role-toggle message with a button instead of legacy reaction emojis."""
         if interaction.guild is None:
-            await interaction.response.send_message("This command can only be used in a server.", ephemeral=True)
+            await interaction.response.send_message("This command can only be used in a server.", ephemeral=True, delete_after=30)
             return
 
         if not can_manage_role(self.bot, interaction.guild, role):
             await interaction.response.send_message(
                 "I can't manage that role. Make sure it isn't managed/default and that my highest role is above it.",
                 ephemeral=True,
+                delete_after=30,
             )
             return
 
@@ -142,7 +146,7 @@ class ReactionRolePostCog(commands.Cog):
         save_reaction_role_posts(self.reaction_role_posts)
         self.bot.add_view(view, message_id=posted_message.id)
 
-        await interaction.followup.send("✅ Role post created.", ephemeral=True)
+        await interaction.followup.send("✅ Role post created.", ephemeral=True, delete_after=30)
 
     @set_reactionrole.error
     async def set_reactionrole_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
@@ -150,6 +154,7 @@ class ReactionRolePostCog(commands.Cog):
             await interaction.response.send_message(
                 "❌ This command is restricted to server administrators.",
                 ephemeral=True,
+                delete_after=30,
             )
 
 

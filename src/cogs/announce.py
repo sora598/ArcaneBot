@@ -29,6 +29,7 @@ async def announce(
         await interaction.response.send_message(
             "❌ Could not determine a target channel.",
             ephemeral=True,
+            delete_after=30,
         )
         return
 
@@ -40,6 +41,7 @@ async def announce(
             await interaction.response.send_message(
                 "❌ Invalid color. Use a hex value like `ff0000` or `#ff0000`.",
                 ephemeral=True,
+                delete_after=30,
             )
             return
 
@@ -56,14 +58,15 @@ async def announce(
 
     try:
         await target_channel.send(embed=embed)
-        await interaction.response.send_message(f"✅ Announcement sent to {target_channel.mention}.", ephemeral=True)
+        await interaction.response.send_message(f"✅ Announcement sent to {target_channel.mention}.", ephemeral=True, delete_after=30)
     except discord.Forbidden:
         await interaction.response.send_message(
             f"❌ I don't have permission to send messages in {target_channel.mention}.",
             ephemeral=True,
+            delete_after=30,
         )
     except discord.HTTPException as e:
-        await interaction.response.send_message(f"❌ Failed to send the message: `{e}`", ephemeral=True)
+        await interaction.response.send_message(f"❌ Failed to send the message: `{e}`", ephemeral=True, delete_after=30)
 
 
 @announce.error
@@ -72,6 +75,7 @@ async def announce_error(interaction: discord.Interaction, error: app_commands.A
         await interaction.response.send_message(
             "❌ This command is restricted to server administrators.",
             ephemeral=True,
+            delete_after=30,
         )
 
 

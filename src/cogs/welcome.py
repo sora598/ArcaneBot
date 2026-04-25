@@ -78,6 +78,7 @@ async def set_welcome(
             await interaction.followup.send(
                 "⚠️ Config saved, but I can't manage that role. Make sure my highest role is above it.",
                 ephemeral=True,
+                delete_after=30,
             )
             return
         view = ReactionRoleButtonView(interaction.client, role.id)
@@ -88,12 +89,14 @@ async def set_welcome(
                 await interaction.followup.send(
                     "⚠️ Button text cannot be empty.",
                     ephemeral=True,
+                    delete_after=30,
                 )
                 return
             if len(custom_label) > 80:
                 await interaction.followup.send(
                     "⚠️ Button text must be 80 characters or less.",
                     ephemeral=True,
+                    delete_after=30,
                 )
                 return
 
@@ -108,6 +111,7 @@ async def set_welcome(
         await interaction.followup.send(
             f"⚠️ Config saved but I couldn't send the rules to {redirect_channel.mention}. Please check my permissions in that channel.",
             ephemeral=True,
+            delete_after=30,
         )
         return
 
@@ -125,6 +129,7 @@ async def set_welcome(
     await interaction.followup.send(
         f"✅ Welcome messages will be sent to {welcome_channel.mention}, new members will be directed to {redirect_channel.mention}, and the server rules have been posted there.",
         ephemeral=True,
+        delete_after=30,
     )
 
 
@@ -134,6 +139,7 @@ async def set_welcome_error(interaction: discord.Interaction, error: app_command
         await interaction.response.send_message(
             "❌ You need the **Administrator** permission to use this command.",
             ephemeral=True,
+            delete_after=30,
         )
 
 

@@ -135,7 +135,7 @@ class CloseThreadView(ui.View):
     async def _close_this_thread(self, interaction: discord.Interaction, closed_by: str):
         thread = interaction.channel
         if not isinstance(thread, discord.Thread):
-            await interaction.response.send_message("This can only be used inside a thread.", ephemeral=True)
+            await interaction.response.send_message("This can only be used inside a thread.", ephemeral=True, delete_after=30)
             return
 
         # Remove this thread from the trade's threads_by_user registry
@@ -168,14 +168,14 @@ class CloseThreadView(ui.View):
     @ui.button(label="Reject Request", style=discord.ButtonStyle.danger, custom_id="close_thread_creator")
     async def reject_button(self, interaction: discord.Interaction, button: ui.Button):
         if interaction.user.id != self.creator_id:
-            await interaction.response.send_message("Only the trade creator can reject this request.", ephemeral=True)
+            await interaction.response.send_message("Only the trade creator can reject this request.", ephemeral=True, delete_after=30)
             return
         await self._close_this_thread(interaction, "the trade creator")
 
     @ui.button(label="Withdraw Request", style=discord.ButtonStyle.secondary, custom_id="close_thread_asker")
     async def withdraw_button(self, interaction: discord.Interaction, button: ui.Button):
         if interaction.user.id != self.asker_id:
-            await interaction.response.send_message("Only the requester can withdraw this request.", ephemeral=True)
+            await interaction.response.send_message("Only the requester can withdraw this request.", ephemeral=True, delete_after=30)
             return
         await self._close_this_thread(interaction, "the requester")
 
@@ -189,11 +189,11 @@ class TradeActionsView(ui.View):
         message_key = str(interaction.message.id)
         trade = ACTIVE_TRADES.get(message_key)
         if not trade:
-            await interaction.response.send_message("This trade is already closed.", ephemeral=True)
+            await interaction.response.send_message("This trade is already closed.", ephemeral=True, delete_after=30)
             return
 
         if interaction.user.id != self.creator_id:
-            await interaction.response.send_message("Only the trade creator can do that.", ephemeral=True)
+            await interaction.response.send_message("Only the trade creator can do that.", ephemeral=True, delete_after=30)
             return
 
         trade["status"] = reason
@@ -231,20 +231,20 @@ class TradeActionsView(ui.View):
         message_key = str(interaction.message.id)
         trade = ACTIVE_TRADES.get(message_key)
         if not trade:
-            await interaction.response.send_message("This trade is no longer active.", ephemeral=True)
+            await interaction.response.send_message("This trade is no longer active.", ephemeral=True, delete_after=30)
             return
 
         # Prevent the trade creator from opening a thread with themselves
         creator_id = trade.get("creator_id")
         if interaction.user.id == creator_id:
             await interaction.response.send_message(
-                "You cannot ask for your own trade.", ephemeral=True
+                "You cannot ask for your own trade.", ephemeral=True, delete_after=30
             )
             return
 
         creator = interaction.guild.get_member(creator_id)
         if creator is None:
-            await interaction.response.send_message("Trade creator is no longer available.", ephemeral=True)
+            await interaction.response.send_message("Trade creator is no longer available.", ephemeral=True, delete_after=30)
             return
 
         # Each asker gets their own private thread — reuse if one already exists
@@ -271,12 +271,14 @@ class TradeActionsView(ui.View):
                     "I don't have permission to create private threads here. "
                     "Please make sure I have the **Create Private Threads** permission.",
                     ephemeral=True,
+                    delete_after=30,
                 )
                 return
             except discord.DiscordException:
                 await interaction.response.send_message(
                     "I could not create a trade thread here. Please check thread permissions.",
                     ephemeral=True,
+                    delete_after=30,
                 )
                 return
 
@@ -286,7 +288,7 @@ class TradeActionsView(ui.View):
                 view=CloseThreadView(creator_id=creator_id, asker_id=interaction.user.id),
             )
 
-        await interaction.response.send_message(f"Your private trade thread: {thread.mention}", ephemeral=True)
+        await interaction.response.send_message(f"Your private trade thread: {thread.mention}", ephemeral=True, delete_after=30)
 
     @ui.button(label="Mark Completed", style=discord.ButtonStyle.success, custom_id="trade_complete_button")
     async def mark_completed(self, interaction, button):
@@ -421,6 +423,7 @@ async def create_trade(
         await interaction.response.send_message(
             "For this trade type, please provide item2 and amount2.",
             ephemeral=True,
+            delete_after=30,
         )
         return
 
