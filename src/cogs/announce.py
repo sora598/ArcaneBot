@@ -43,9 +43,11 @@ async def announce(
             )
             return
 
+    formatted_content = message.replace("\\n", "\n")
+    
     embed = discord.Embed(
         title=title,
-        description=message,
+        description=formatted_content,
         color=embed_color,
         timestamp=datetime.now(timezone.utc),
     )
