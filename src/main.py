@@ -18,6 +18,7 @@ intents.reactions = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 EXTENSIONS = [
+    "cogs.help",
     "cogs.notify_role",
     "cogs.reaction_role_post",
     "cogs.trade_system",

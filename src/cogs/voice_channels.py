@@ -57,6 +57,47 @@ def get_user_controlled_voice_channel(interaction: discord.Interaction) -> tuple
 vc_group = app_commands.Group(name="vc", description="Manage your creator voice channel")
 
 
+@vc_group.command(name="vc-help", description="Show a tutorial for the creator voice channel commands.")
+async def vc_help(interaction: discord.Interaction):
+    embed = discord.Embed(
+        title="Creator Voice Channel Help",
+        description="Use these slash commands to manage your own creator voice channel.",
+        color=discord.Color.blurple(),
+    )
+    embed.add_field(
+        name="/vc create",
+        value="Create a new creator voice channel with an optional name and user limit.",
+        inline=False,
+    )
+    embed.add_field(
+        name="/vc lock",
+        value="Prevent other members from joining your creator voice channel.",
+        inline=False,
+    )
+    embed.add_field(
+        name="/vc unlock",
+        value="Allow other members to join your creator voice channel again.",
+        inline=False,
+    )
+    embed.add_field(
+        name="/vc hide",
+        value="Hide your creator voice channel from regular members.",
+        inline=False,
+    )
+    embed.add_field(
+        name="/vc show",
+        value="Make your creator voice channel visible again.",
+        inline=False,
+    )
+    embed.add_field(
+        name="Note",
+        value="These are slash commands, so the command itself does not appear in chat. The bot replies privately to keep the channel clean.",
+        inline=False,
+    )
+
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+
+
 @vc_group.command(name="create", description="Create a voice channel with a custom user limit.")
 @app_commands.describe(name="Optional name of the voice channel", limit="Maximum participants (0 means unlimited)")
 async def create_voice_channel(
