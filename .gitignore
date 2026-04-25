@@ -9,3 +9,6 @@ __pycache__
 /pytest.ini
 .pytest_cache/
 .coverage
+
+ngrok
+ngrok*
