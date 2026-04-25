@@ -52,7 +52,6 @@ def is_valid_roblox_share_link(link: str) -> bool:
     private_server_link="Roblox private server link",
 )
 @app_commands.choices(period=PERIOD_CHOICES)
-@app_commands.checks.has_permissions(administrator=True)
 async def sea_beast_hunt_announcement(
     interaction: discord.Interaction,
     hour: app_commands.Range[int, 1, 12],
