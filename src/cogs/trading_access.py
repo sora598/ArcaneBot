@@ -163,11 +163,136 @@ async def setup_trading_error(interaction: discord.Interaction, error: app_comma
             ephemeral=True,
         )
 
+import time
+from datetime import timedelta
 
+class TradingChannelGuard(commands.Cog):
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
+
+        # Store timestamps per user
+        self.user_messages = {}
+
+        # Spam settings
+        self.SPAM_LIMIT = 5        # messages
+        self.SPAM_INTERVAL = 10    # seconds
+        self.MUTE_DURATION = 300   # 5 minutes
+
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message):
+        if message.author.bot:
+            return  # allow bot messages
+
+        if not message.guild:
+            return  # ignore DMs
+
+        guild_key = str(message.guild.id)
+        trading_cfg = TRADING_CONFIG.get(guild_key)
+
+        if not trading_cfg:
+            return
+
+        trading_channel_id = trading_cfg.get("channel_id")
+
+        # 🚫 Only block the main trading channel (threads are safe)
+        if message.channel.id == trading_channel_id:
+            try:
+                # -------------------------
+                # SPAM DETECTION
+                # -------------------------
+
+                now = time.time()
+
+                timestamps = self.user_messages.get(
+                    message.author.id,
+                    []
+                )
+
+                # Keep recent timestamps only
+                timestamps = [
+                    t for t in timestamps
+                    if now - t < self.SPAM_INTERVAL
+                ]
+
+                timestamps.append(now)
+
+                self.user_messages[
+                    message.author.id
+                ] = timestamps
+
+                # If spam detected → timeout user
+                if len(timestamps) >= self.SPAM_LIMIT:
+
+                    try:
+                        await message.author.timeout(
+                            timedelta(seconds=self.MUTE_DURATION),
+                            reason="Spam detected in trading channel"
+                        )
+
+                        timeout_embed = discord.Embed(
+                            title="🚫 Spam Detected",
+                            description=(
+                                f"{message.author.mention}, "
+                                "you have been muted for **5 minutes** "
+                                "for spamming in the trading channel."
+                            ),
+                            color=discord.Color.red(),
+                        )
+
+                        warn = await message.channel.send(
+                            embed=timeout_embed
+                        )
+
+                        await warn.delete(delay=10)
+
+                        # Reset counter after mute
+                        self.user_messages[
+                            message.author.id
+                        ] = []
+
+                    except discord.Forbidden:
+                        print("Missing timeout permissions.")
+
+                # -------------------------
+                # NORMAL DELETE + WARNING
+                # -------------------------
+
+                await message.delete()
+
+                embed = discord.Embed(
+                    title="🚫 Trading Channel Notice",
+                    description=(
+                        f"{message.author.mention}, please use **`/createtrade`** "
+                        "to post trades.\n\n"
+                        "Use the trade buttons to open a **private thread** "
+                        "for discussion."
+                    ),
+                    color=discord.Color.orange(),
+                )
+
+                embed.set_footer(
+                    text="This message will be removed in 10 seconds."
+                )
+
+                warning = await message.channel.send(
+                    embed=embed
+                )
+
+                # Delete warning after 10 seconds
+                await warning.delete(delay=10)
+
+            except discord.Forbidden:
+                print("Missing permissions to delete messages.")
+
+        await self.bot.process_commands(message)
+                
 async def setup(bot: commands.Bot):
     global TRADING_CONFIG, BOT
     BOT = bot
     TRADING_CONFIG = load_trading_config()
+    
+    await bot.add_cog(TradingChannelGuard(bot))
+    
     bot.tree.add_command(setup_trading)
 
     restored = 0
