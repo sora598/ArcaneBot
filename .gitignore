@@ -2,3 +2,4 @@
 __pycache__
 /.venv
 /src/*.json
+!/src/item_list.json
