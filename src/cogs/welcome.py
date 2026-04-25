@@ -34,6 +34,24 @@ def save_welcome_config(cfg: dict):
         json.dump(cfg, f, indent=2)
 
 
+async def resolve_text_channel(guild: discord.Guild, channel_id: int | None) -> discord.TextChannel | None:
+    if not channel_id:
+        return None
+
+    channel = guild.get_channel(int(channel_id))
+    if isinstance(channel, discord.TextChannel):
+        return channel
+
+    try:
+        fetched = await guild.fetch_channel(int(channel_id))
+    except discord.DiscordException:
+        return None
+
+    if isinstance(fetched, discord.TextChannel):
+        return fetched
+    return None
+
+
 @app_commands.command(name="setwelcome", description="Configure the welcome message and redirect channel for new members.")
 @app_commands.describe(
     welcome_channel="Channel where the welcome message is posted",
@@ -149,8 +167,8 @@ async def on_member_join(member: discord.Member):
     if not cfg:
         return
 
-    welcome_channel = member.guild.get_channel(cfg.get("welcome_channel_id"))
-    redirect_channel = member.guild.get_channel(cfg.get("redirect_channel_id"))
+    welcome_channel = await resolve_text_channel(member.guild, cfg.get("welcome_channel_id"))
+    redirect_channel = await resolve_text_channel(member.guild, cfg.get("redirect_channel_id"))
     if welcome_channel is None or redirect_channel is None:
         return
 
@@ -167,6 +185,13 @@ async def on_member_join(member: discord.Member):
         await welcome_channel.send(embed=embed)
     except discord.Forbidden:
         print(f"Missing permission to send welcome message in {welcome_channel.id}")
+
+    try:
+        await redirect_channel.send(
+            f"{member.mention} welcome! Please read the rules above and continue in this channel to get started."
+        )
+    except discord.Forbidden:
+        print(f"Missing permission to send redirect message in {redirect_channel.id}")
 
 
 async def setup(bot: commands.Bot):

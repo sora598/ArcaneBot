@@ -12,11 +12,51 @@ from discord.ext import commands
 from cogs.notify_role import load_notify_store
 
 BOT: commands.Bot | None = None
+SEA_BEAST_PING_TASKS: dict[int, asyncio.Task] = {}
 
 PERIOD_CHOICES = [
     app_commands.Choice(name="AM", value="AM"),
     app_commands.Choice(name="PM", value="PM"),
 ]
+
+
+class SeaBeastHuntView(discord.ui.View):
+    def __init__(self, host_id: int):
+        super().__init__(timeout=None)
+        self.host_id = host_id
+
+    @discord.ui.button(label="Cancel Hunt", style=discord.ButtonStyle.danger, custom_id="seabeasthunt_cancel")
+    async def cancel_hunt(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.host_id:
+            await interaction.response.send_message(
+                "Only the person who created this Sea Beast Hunt can cancel it.",
+                ephemeral=True,
+                delete_after=30,
+            )
+            return
+
+        message = interaction.message
+        if message is None:
+            await interaction.response.send_message(
+                "I couldn't find the hunt message to cancel.",
+                ephemeral=True,
+                delete_after=30,
+            )
+            return
+
+        reminder_task = SEA_BEAST_PING_TASKS.pop(message.id, None)
+        if reminder_task and not reminder_task.done():
+            reminder_task.cancel()
+
+        for child in self.children:
+            child.disabled = True
+
+        embed = message.embeds[0] if message.embeds else discord.Embed(title="Sea Beast Hunt Announcement")
+        embed.color = discord.Color.red()
+        embed.add_field(name="Status", value="Cancelled", inline=False)
+        embed.set_footer(text="This Sea Beast Hunt was cancelled by the host.")
+
+        await interaction.response.edit_message(embed=embed, view=self)
 
 
 def get_guild_notify_role(guild: discord.Guild) -> discord.Role | None:
@@ -97,34 +137,42 @@ async def sea_beast_hunt_announcement(
     embed.add_field(name="Private Server", value=f"[Join Server]({link})", inline=True)
     embed.set_footer(text="Good luck and happy hunting.")
 
+    view = SeaBeastHuntView(host_id=interaction.user.id)
+
     if ping_text:
-        await interaction.response.send_message(content=ping_text, embed=embed)
+        await interaction.response.send_message(content=ping_text, embed=embed, view=view)
     else:
-        await interaction.response.send_message(embed=embed)
+        await interaction.response.send_message(embed=embed, view=view)
+
+    posted_message = await interaction.original_response()
 
     if BOT is not None and notify_role and minutes_until_start > 30:
         delay = (minutes_until_start - 30) * 60
 
         async def _schedule_ping():
-            await asyncio.sleep(delay)
-            role = get_guild_notify_role(interaction.guild)
-            if role is None:
-                return
-            channel = interaction.channel
-            if channel is None:
-                try:
-                    channel = await BOT.fetch_channel(interaction.channel_id)
-                except discord.DiscordException:
-                    return
             try:
+                await asyncio.sleep(delay)
+                role = get_guild_notify_role(interaction.guild)
+                if role is None:
+                    return
+                channel = interaction.channel
+                if channel is None:
+                    try:
+                        channel = await BOT.fetch_channel(interaction.channel_id)
+                    except discord.DiscordException:
+                        return
                 await channel.send(
                     f"{role.mention} ⏰ The Sea Beast Hunt hosted by {interaction.user.mention} starts in **30 minutes**! "
                     f"[Join Server]({link})"
                 )
+            except asyncio.CancelledError:
+                return
             except discord.DiscordException as exc:
                 print(f"Scheduled sea beast ping failed: {exc}")
+            finally:
+                SEA_BEAST_PING_TASKS.pop(posted_message.id, None)
 
-        BOT.loop.create_task(_schedule_ping())
+        SEA_BEAST_PING_TASKS[posted_message.id] = BOT.loop.create_task(_schedule_ping())
 
 
 @sea_beast_hunt_announcement.error
