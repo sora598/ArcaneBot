@@ -75,7 +75,7 @@ class ReactionRoleButtonView(ui.View):
                 await interaction.response.send_message(f"{role.mention} removed.", ephemeral=True)
             else:
                 await member.add_roles(role)
-                await interaction.response.send_message(f"{role.mention} granted, you can now view the available channels in the server.\n -# some roles might require additional steps", ephemeral=True)
+                await interaction.response.send_message(f"{role.mention} granted, you can now view the available channels in the server.\n some roles might require additional steps", ephemeral=True)
         except discord.Forbidden:
             await interaction.response.send_message(
                 "I don't have permission to update roles. Check my role hierarchy and permissions.",
