@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 import discord
+import asyncio
 from discord import app_commands
 from discord.ext import commands
 
@@ -57,7 +58,7 @@ def get_user_controlled_voice_channel(interaction: discord.Interaction) -> tuple
 vc_group = app_commands.Group(name="vc", description="Manage your creator voice channel")
 
 
-@vc_group.command(name="vc-help", description="Show a tutorial for the creator voice channel commands.")
+@vc_group.command(name="help", description="Show a tutorial for the creator voice channel commands.")
 async def vc_help(interaction: discord.Interaction):
     embed = discord.Embed(
         title="Creator Voice Channel Help",
@@ -87,6 +88,11 @@ async def vc_help(interaction: discord.Interaction):
     embed.add_field(
         name="/vc show",
         value="Make your creator voice channel visible again.",
+        inline=False,
+    )
+    embed.add_field(
+        name="/vc limit",
+        value="Set or change the user limit of your creator voice channel.",
         inline=False,
     )
     embed.add_field(
@@ -227,20 +233,28 @@ async def vc_show(interaction: discord.Interaction):
 
 
 async def on_voice_state_update(member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
-    """Auto-delete creator voice channels when everyone leaves."""
+    """Auto-delete creator voice channels when everyone leaves (with delay)."""
+    
     left_channel = before.channel
     if not isinstance(left_channel, discord.VoiceChannel):
         return
 
     channel_key = str(left_channel.id)
+
+    # Only handle creator channels
     if channel_key not in VOICE_OWNERS:
         return
 
+    # Wait 10 seconds before deleting
+    await asyncio.sleep(10)
+
+    # Check again after delay
+    # Someone might have rejoined
     if len(left_channel.members) > 0:
         return
 
     try:
-        await left_channel.delete(reason="Auto-delete empty creator voice channel")
+        await left_channel.delete(reason="Auto-delete empty creator voice channel after delay")
     except discord.Forbidden:
         return
     except discord.HTTPException:
@@ -249,7 +263,44 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
     VOICE_OWNERS.pop(channel_key, None)
     save_voice_owners()
 
+@vc_group.command(
+    name="limit",
+    description="Set or change the user limit of your creator voice channel."
+)
+@app_commands.describe(
+    limit="Maximum participants (0 means unlimited)"
+)
+async def vc_limit(
+    interaction: discord.Interaction,
+    limit: app_commands.Range[int, 0, 99]
+):
+    channel, error = get_user_controlled_voice_channel(interaction)
 
+    if error:
+        await interaction.response.send_message(error, ephemeral=True)
+        return
+
+    try:
+        await channel.edit(user_limit=limit)
+
+        await interaction.response.send_message(
+            f"👥 Set user limit of {channel.mention} to "
+            f"**{limit if limit > 0 else 'unlimited'}**.",
+            ephemeral=True
+        )
+
+    except discord.Forbidden:
+        await interaction.response.send_message(
+            "I don't have permission to edit this voice channel.",
+            ephemeral=True
+        )
+
+    except discord.HTTPException as exc:
+        await interaction.response.send_message(
+            f"Failed to update user limit: `{exc}`",
+            ephemeral=True
+        )
+        
 async def setup(bot: commands.Bot):
     global VOICE_OWNERS
     VOICE_OWNERS = load_voice_owners()
