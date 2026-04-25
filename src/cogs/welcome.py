@@ -8,6 +8,13 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from .reaction_role_post import (
+    ReactionRoleButtonView,
+    can_manage_role,
+    load_reaction_role_posts,
+    save_reaction_role_posts,
+)
+
 WELCOME_STORE_PATH = Path(__file__).resolve().parent.parent / "welcome_config.json"
 WELCOME_CONFIG: dict = {}
 
@@ -31,12 +38,16 @@ def save_welcome_config(cfg: dict):
 @app_commands.describe(
     welcome_channel="Channel where the welcome message is posted",
     redirect_channel="Channel new members are directed to visit first",
+    role="Optional role to toggle with a button under the rules embed",
+    button_text="Optional custom text for the role button on this rules message",
 )
 @app_commands.checks.has_permissions(manage_guild=True)
 async def set_welcome(
     interaction: discord.Interaction,
     welcome_channel: discord.TextChannel,
     redirect_channel: discord.TextChannel,
+    role: discord.Role | None = None,
+    button_text: str | None = None,
 ):
     await interaction.response.defer(ephemeral=True)
 
@@ -48,27 +59,68 @@ async def set_welcome(
     save_welcome_config(WELCOME_CONFIG)
 
     rules_embed = discord.Embed(title="📜 Server Rules", color=discord.Color.red())
-    rules_embed.add_field(name="## 1. Be Respectful", value="Treat everyone with respect. No harassment, bullying, hate speech, or discrimination of any kind.", inline=False)
-    rules_embed.add_field(name="## 2. No Spam or Flooding", value="Avoid sending repeated messages, excessive emojis, or unnecessary mentions.", inline=False)
-    rules_embed.add_field(name="## 3. Keep It Appropriate", value="No NSFW, explicit, or offensive content. Keep discussions suitable for all members (unless in designated channels).", inline=False)
-    rules_embed.add_field(name="## 4. Use Channels Properly", value="Stick to the purpose of each channel. Don't post unrelated content in the wrong channels.", inline=False)
-    rules_embed.add_field(name="## 5. No Unauthorized Links", value="Do not send suspicious, harmful, or unauthorized links. Only share links in allowed channels.", inline=False)
-    rules_embed.add_field(name="## 6. Follow Discord Terms of Service", value="All members must follow the rules set by Discord and its Community Guidelines.", inline=False)
-    rules_embed.add_field(name="## 7. No Self-Promotion Without Permission", value="Advertising, promotions, or invites to other servers are not allowed unless approved by staff.", inline=False)
-    rules_embed.add_field(name="## 8. Respect Privacy", value="Do not share personal information (yours or others') without consent.", inline=False)
-    rules_embed.add_field(name="## 9. Listen to Staff", value="Follow instructions from moderators and admins. Their decisions are final.", inline=False)
-    rules_embed.add_field(name="## 10. Use Common Sense", value="If something feels wrong or harmful, don't do it.", inline=False)
+    rules_embed.add_field(name="1. Be Respectful", value="Treat everyone with respect. No harassment, bullying, hate speech, or discrimination of any kind.", inline=False)
+    rules_embed.add_field(name="2. No Spam or Flooding", value="Avoid sending repeated messages, excessive emojis, or unnecessary mentions.", inline=False)
+    rules_embed.add_field(name="3. Keep It Appropriate", value="No NSFW, explicit, or offensive content. Keep discussions suitable for all members (unless in designated channels).", inline=False)
+    rules_embed.add_field(name="4. Use Channels Properly", value="Stick to the purpose of each channel. Don't post unrelated content in the wrong channels.", inline=False)
+    rules_embed.add_field(name="5. No Unauthorized Links", value="Do not send suspicious, harmful, or unauthorized links. Only share links in allowed channels.", inline=False)
+    rules_embed.add_field(name="6. Follow Discord Terms of Service", value="All members must follow the rules set by Discord and its Community Guidelines.", inline=False)
+    rules_embed.add_field(name="7. No Self-Promotion Without Permission", value="Advertising, promotions, or invites to other servers are not allowed unless approved by staff.", inline=False)
+    rules_embed.add_field(name="8. Respect Privacy", value="Do not share personal information (yours or others') without consent.", inline=False)
+    rules_embed.add_field(name="9. Listen to Staff", value="Follow instructions from moderators and admins. Their decisions are final.", inline=False)
+    rules_embed.add_field(name="10. Use Common Sense", value="If something feels wrong or harmful, don't do it.", inline=False)
     rules_embed.add_field(name="⚠️ Consequences", value="Breaking the rules may result in:\n> ⚠️ Warning\n> 🔇 Mute\n> 👢 Kick\n> 🔨 Ban", inline=False)
     rules_embed.set_footer(text="By Clicking the button below, you agree to follow these rules and respect the community. Enjoy your stay! 🎉")
 
+    view = None
+    if role is not None:
+        if interaction.guild is None or not can_manage_role(interaction.client, interaction.guild, role):
+            await interaction.followup.send(
+                "⚠️ Config saved, but I can't manage that role. Make sure my highest role is above it.",
+                ephemeral=True,
+            )
+            return
+        view = ReactionRoleButtonView(interaction.client, role.id)
+
+        if button_text is not None:
+            custom_label = button_text.strip()
+            if not custom_label:
+                await interaction.followup.send(
+                    "⚠️ Button text cannot be empty.",
+                    ephemeral=True,
+                )
+                return
+            if len(custom_label) > 80:
+                await interaction.followup.send(
+                    "⚠️ Button text must be 80 characters or less.",
+                    ephemeral=True,
+                )
+                return
+
+            for child in view.children:
+                if isinstance(child, discord.ui.Button):
+                    child.label = custom_label
+                    break
+
     try:
-        await redirect_channel.send(embed=rules_embed)
+        posted_message = await redirect_channel.send(embed=rules_embed, view=view)
     except discord.Forbidden:
         await interaction.followup.send(
             f"⚠️ Config saved but I couldn't send the rules to {redirect_channel.mention}. Please check my permissions in that channel.",
             ephemeral=True,
         )
         return
+
+    if role is not None and view is not None:
+        reaction_role_posts = load_reaction_role_posts()
+        reaction_role_posts[str(posted_message.id)] = {
+            "guild_id": interaction.guild_id,
+            "channel_id": redirect_channel.id,
+            "role_id": role.id,
+            "message": "Rules acceptance role toggle",
+        }
+        save_reaction_role_posts(reaction_role_posts)
+        interaction.client.add_view(view, message_id=posted_message.id)
 
     await interaction.followup.send(
         f"✅ Welcome messages will be sent to {welcome_channel.mention}, new members will be directed to {redirect_channel.mention}, and the server rules have been posted there.",
