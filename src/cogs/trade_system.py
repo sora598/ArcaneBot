@@ -119,6 +119,67 @@ def build_trade_embed(user, trade_type, item1, amount1, item2, amount2):
     return embed
 
 
+
+class CloseThreadView(ui.View):
+    """
+    Buttons sent inside each private trade thread.
+    The creator can reject (close) this specific thread.
+    The asker can also withdraw their own request.
+    """
+
+    def __init__(self, creator_id: int, asker_id: int):
+        super().__init__(timeout=None)
+        self.creator_id = creator_id
+        self.asker_id = asker_id
+
+    async def _close_this_thread(self, interaction: discord.Interaction, closed_by: str):
+        thread = interaction.channel
+        if not isinstance(thread, discord.Thread):
+            await interaction.response.send_message("This can only be used inside a thread.", ephemeral=True)
+            return
+
+        # Remove this thread from the trade's threads_by_user registry
+        for trade in ACTIVE_TRADES.values():
+            threads_by_user: dict = trade.get("threads_by_user", {})
+            for user_id, tid in list(threads_by_user.items()):
+                if int(tid) == thread.id:
+                    del threads_by_user[user_id]
+                    save_trade_store()
+                    break
+
+        await interaction.response.send_message(
+            f"Thread closed by {closed_by}.", ephemeral=False
+        )
+        for child in self.children:
+            child.disabled = True
+        try:
+            await interaction.message.edit(view=self)
+        except discord.DiscordException:
+            pass
+        await asyncio.sleep(3)
+        try:
+            await thread.delete(reason=f"Trade thread closed by {closed_by}")
+        except discord.DiscordException:
+            try:
+                await thread.edit(archived=True, locked=True, reason=f"Trade thread closed by {closed_by}")
+            except discord.DiscordException:
+                pass
+
+    @ui.button(label="Reject Request", style=discord.ButtonStyle.danger, custom_id="close_thread_creator")
+    async def reject_button(self, interaction: discord.Interaction, button: ui.Button):
+        if interaction.user.id != self.creator_id:
+            await interaction.response.send_message("Only the trade creator can reject this request.", ephemeral=True)
+            return
+        await self._close_this_thread(interaction, "the trade creator")
+
+    @ui.button(label="Withdraw Request", style=discord.ButtonStyle.secondary, custom_id="close_thread_asker")
+    async def withdraw_button(self, interaction: discord.Interaction, button: ui.Button):
+        if interaction.user.id != self.asker_id:
+            await interaction.response.send_message("Only the requester can withdraw this request.", ephemeral=True)
+            return
+        await self._close_this_thread(interaction, "the requester")
+
+
 class TradeActionsView(ui.View):
     def __init__(self, creator_id):
         super().__init__(timeout=None)
@@ -136,9 +197,10 @@ class TradeActionsView(ui.View):
             return
 
         trade["status"] = reason
-        thread_id = trade.get("thread_id")
-        if thread_id:
-            thread = interaction.guild.get_thread(thread_id)
+        # Close all per-user private threads
+        threads_by_user: dict = trade.get("threads_by_user", {})
+        for thread_id in threads_by_user.values():
+            thread = interaction.guild.get_thread(int(thread_id))
             if thread:
                 try:
                     await thread.send(f"Trade {reason} by {interaction.user.mention}.")
@@ -172,23 +234,45 @@ class TradeActionsView(ui.View):
             await interaction.response.send_message("This trade is no longer active.", ephemeral=True)
             return
 
+        # Prevent the trade creator from opening a thread with themselves
         creator_id = trade.get("creator_id")
+        if interaction.user.id == creator_id:
+            await interaction.response.send_message(
+                "You cannot ask for your own trade.", ephemeral=True
+            )
+            return
+
         creator = interaction.guild.get_member(creator_id)
         if creator is None:
             await interaction.response.send_message("Trade creator is no longer available.", ephemeral=True)
             return
 
-        thread_id = trade.get("thread_id")
-        thread = interaction.guild.get_thread(thread_id) if thread_id else None
+        # Each asker gets their own private thread — reuse if one already exists
+        threads_by_user: dict = trade.setdefault("threads_by_user", {})
+        existing_thread_id = threads_by_user.get(str(interaction.user.id))
+        thread = interaction.guild.get_thread(existing_thread_id) if existing_thread_id else None
+
         if thread is None:
             try:
-                thread = await interaction.message.create_thread(
+                thread = await interaction.channel.create_thread(
                     name=f"trade-{creator.display_name}-{interaction.user.display_name}"[:100],
+                    type=discord.ChannelType.private_thread,
                     auto_archive_duration=1440,
-                    reason="Trade discussion thread created",
+                    invitable=False,
+                    reason="Private trade discussion thread",
                 )
-                trade["thread_id"] = thread.id
+                await thread.add_user(creator)
+                await thread.add_user(interaction.user)
+
+                threads_by_user[str(interaction.user.id)] = thread.id
                 save_trade_store()
+            except discord.Forbidden:
+                await interaction.response.send_message(
+                    "I don't have permission to create private threads here. "
+                    "Please make sure I have the **Create Private Threads** permission.",
+                    ephemeral=True,
+                )
+                return
             except discord.DiscordException:
                 await interaction.response.send_message(
                     "I could not create a trade thread here. Please check thread permissions.",
@@ -196,11 +280,13 @@ class TradeActionsView(ui.View):
                 )
                 return
 
-        await thread.send(
-            f"{creator.mention} {interaction.user.mention} is asking for this trade. "
-            "Use this thread to discuss details."
-        )
-        await interaction.response.send_message(f"Trade thread ready: {thread.mention}", ephemeral=True)
+            await thread.send(
+                f"{creator.mention} {interaction.user.mention} is interested in this trade. "
+                "Use this thread to discuss details. This thread is private — only you two can see it.",
+                view=CloseThreadView(creator_id=creator_id, asker_id=interaction.user.id),
+            )
+
+        await interaction.response.send_message(f"Your private trade thread: {thread.mention}", ephemeral=True)
 
     @ui.button(label="Mark Completed", style=discord.ButtonStyle.success, custom_id="trade_complete_button")
     async def mark_completed(self, interaction, button):
@@ -240,9 +326,9 @@ async def auto_close_trade_after_delay(message_id, delay_seconds):
         message = None
 
     if message:
-        thread_id = trade.get("thread_id")
-        if thread_id:
-            thread = message.guild.get_thread(thread_id)
+        threads_by_user: dict = trade.get("threads_by_user", {})
+        for thread_id in threads_by_user.values():
+            thread = message.guild.get_thread(int(thread_id))
             if thread:
                 try:
                     await thread.send("This trade expired after 12 hours.")
@@ -352,7 +438,7 @@ async def create_trade(
         "creator_id": interaction.user.id,
         "guild_id": interaction.guild_id,
         "channel_id": interaction.channel_id,
-        "thread_id": None,
+        "threads_by_user": {},  # str(user_id) -> private thread_id
         "status": "active",
         "expires_at": (datetime.now(timezone.utc) + timedelta(hours=12)).isoformat(),
     }
