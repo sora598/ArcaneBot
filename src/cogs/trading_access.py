@@ -70,7 +70,7 @@ class TradingAccessView(ui.View):
     role_name="Name for the new trading access role (default: Trader)",
     category="Category to place the trading channel in (optional)",
 )
-@app_commands.checks.has_permissions(manage_guild=True)
+@app_commands.checks.has_permissions(administrator=True)
 async def setup_trading(
     interaction: discord.Interaction,
     post_channel: discord.TextChannel,
@@ -159,7 +159,7 @@ async def setup_trading(
 async def setup_trading_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
     if isinstance(error, app_commands.MissingPermissions):
         await interaction.response.send_message(
-            "❌ You need the **Manage Server** permission to use this command.",
+            "❌ You need the **Administrator** permission to use this command.",
             ephemeral=True,
         )
 

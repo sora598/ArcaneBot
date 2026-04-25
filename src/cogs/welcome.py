@@ -41,7 +41,7 @@ def save_welcome_config(cfg: dict):
     role="Optional role to toggle with a button under the rules embed",
     button_text="Optional custom text for the role button on this rules message",
 )
-@app_commands.checks.has_permissions(manage_guild=True)
+@app_commands.checks.has_permissions(administrator=True)
 async def set_welcome(
     interaction: discord.Interaction,
     welcome_channel: discord.TextChannel,
@@ -132,7 +132,7 @@ async def set_welcome(
 async def set_welcome_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
     if isinstance(error, app_commands.MissingPermissions):
         await interaction.response.send_message(
-            "❌ You need the **Manage Server** permission to use this command.",
+            "❌ You need the **Administrator** permission to use this command.",
             ephemeral=True,
         )
 

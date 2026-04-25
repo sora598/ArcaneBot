@@ -83,6 +83,7 @@ class NotifyRoleButtonView(ui.View):
 
 @app_commands.command(name="notifyrole", description="Send a notification embed with a button for Sea Beast Hunt role.")
 @app_commands.describe(role="The role to assign/remove for notifications.")
+@app_commands.checks.has_permissions(administrator=True)
 async def notifyrole(interaction: discord.Interaction, role: discord.Role):
     if interaction.guild is None:
         await interaction.response.send_message("This command can only be used in a server.", ephemeral=True)
@@ -118,6 +119,15 @@ async def notifyrole(interaction: discord.Interaction, role: discord.Role):
         BOT.add_view(view, message_id=message.id)
 
     await interaction.followup.send("✅ Notification role embed posted!", ephemeral=True)
+
+
+@notifyrole.error
+async def notifyrole_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+    if isinstance(error, app_commands.MissingPermissions):
+        await interaction.response.send_message(
+            "❌ This command is restricted to server administrators.",
+            ephemeral=True,
+        )
 
 
 async def setup(bot: commands.Bot):

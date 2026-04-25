@@ -107,6 +107,7 @@ class ReactionRolePostCog(commands.Cog):
         message="The message text to post",
         role="The role to give/remove when the button is clicked",
     )
+    @app_commands.checks.has_permissions(administrator=True)
     async def set_reactionrole(self, interaction: discord.Interaction, message: str, role: discord.Role):
         """Post a role-toggle message with a button instead of legacy reaction emojis."""
         if interaction.guild is None:
@@ -142,6 +143,14 @@ class ReactionRolePostCog(commands.Cog):
         self.bot.add_view(view, message_id=posted_message.id)
 
         await interaction.followup.send("✅ Role post created.", ephemeral=True)
+
+    @set_reactionrole.error
+    async def set_reactionrole_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
+        if isinstance(error, app_commands.MissingPermissions):
+            await interaction.response.send_message(
+                "❌ This command is restricted to server administrators.",
+                ephemeral=True,
+            )
 
 
 async def setup(bot: commands.Bot):

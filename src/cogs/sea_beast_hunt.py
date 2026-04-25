@@ -52,6 +52,7 @@ def is_valid_roblox_share_link(link: str) -> bool:
     private_server_link="Roblox private server link",
 )
 @app_commands.choices(period=PERIOD_CHOICES)
+@app_commands.checks.has_permissions(administrator=True)
 async def sea_beast_hunt_announcement(
     interaction: discord.Interaction,
     hour: app_commands.Range[int, 1, 12],
@@ -124,6 +125,15 @@ async def sea_beast_hunt_announcement(
                 print(f"Scheduled sea beast ping failed: {exc}")
 
         BOT.loop.create_task(_schedule_ping())
+
+
+@sea_beast_hunt_announcement.error
+async def sea_beast_hunt_announcement_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+    if isinstance(error, app_commands.MissingPermissions):
+        await interaction.response.send_message(
+            "❌ This command is restricted to server administrators.",
+            ephemeral=True,
+        )
 
 
 async def setup(bot: commands.Bot):
