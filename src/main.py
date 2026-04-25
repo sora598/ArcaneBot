@@ -74,7 +74,7 @@ def create_bot() -> commands.Bot:
     return bot
 
 
-async def main():
+def main():
     load_dotenv()
 
     TOKEN = os.getenv("BOT_TOKEN")
@@ -83,10 +83,8 @@ async def main():
         raise ValueError("BOT_TOKEN not set.")
 
     bot = create_bot()
-
-    async with bot:
-        await bot.start(TOKEN)
+    bot.run(TOKEN)
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
