@@ -164,6 +164,9 @@ async def create_voice_channel(
         except (discord.Forbidden, discord.HTTPException):
             pass
 
+    # Schedule a cleanup in case the creator never joins
+    asyncio.create_task(_cleanup_if_empty(voice_channel))
+
 
 @vc_group.command(name="lock", description="Lock your creator voice channel (members cannot join).")
 async def vc_lock(interaction: discord.Interaction):
@@ -233,32 +236,45 @@ async def vc_show(interaction: discord.Interaction):
         await interaction.response.send_message(f"Failed to show channel: `{exc}`", ephemeral=True, delete_after=30)
 
 
-async def on_voice_state_update(member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
-    """Auto-delete creator voice channels when everyone leaves (with delay)."""
+async def _cleanup_if_empty(channel: discord.VoiceChannel, delay: int = 30) -> None:
+    """Delete a creator voice channel if it's still empty after `delay` seconds."""
+    await asyncio.sleep(delay)
+
+    channel_key = str(channel.id)
+    if channel_key not in VOICE_OWNERS:
+        return  # Already deleted or not a creator channel
+
+    if len(channel.members) > 0:
+        return  # Someone joined, leave it alone
+
+    try:
+        await channel.delete(reason="Auto-delete: creator channel was never joined")
+    except (discord.Forbidden, discord.HTTPException):
+        return
+
+    VOICE_OWNERS.pop(channel_key, None)
+    save_voice_owners()
     
+async def on_voice_state_update(member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
     left_channel = before.channel
     if not isinstance(left_channel, discord.VoiceChannel):
         return
 
     channel_key = str(left_channel.id)
-
-    # Only handle creator channels
     if channel_key not in VOICE_OWNERS:
         return
 
-    # Wait 10 seconds before deleting
     await asyncio.sleep(10)
 
-    # Check again after delay
-    # Someone might have rejoined
+    # Re-check AFTER the sleep — another coroutine may have already cleaned up
+    if channel_key not in VOICE_OWNERS:
+        return
     if len(left_channel.members) > 0:
         return
 
     try:
         await left_channel.delete(reason="Auto-delete empty creator voice channel after delay")
-    except discord.Forbidden:
-        return
-    except discord.HTTPException:
+    except (discord.Forbidden, discord.HTTPException):
         return
 
     VOICE_OWNERS.pop(channel_key, None)
