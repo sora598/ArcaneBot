@@ -156,7 +156,6 @@ async def setup_trading(
     await interaction.followup.send(
         f"Done! Role: {trading_role.mention}, Channel: {trading_channel.mention}, Opt-in embed posted in: {post_channel.mention}",
         ephemeral=True,
-        delete_after=30,
     )
 
 

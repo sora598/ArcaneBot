@@ -137,21 +137,18 @@ async def create_voice_channel(
         await interaction.followup.send(
             "I don't have permission to create voice channels. Please grant **Manage Channels**.",
             ephemeral=True,
-            delete_after=30,
         )
         return
     except discord.HTTPException as exc:
         await interaction.followup.send(
             f"Failed to create voice channel: `{exc}`",
             ephemeral=True,
-            delete_after=30,
         )
         return
 
     await interaction.followup.send(
         f"✅ Created {voice_channel.mention} with limit **{limit if limit > 0 else 'unlimited'}**.",
         ephemeral=True,
-        delete_after=30,
     )
 
     VOICE_OWNERS[str(voice_channel.id)] = {
