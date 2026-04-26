@@ -7,6 +7,10 @@ from discord.ext import commands
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
+_DELETE_AFTER = 30  # seconds for most transient responses
+_BULK_STATUS_TTL = 120  # seconds for bulk-operation status messages
+
+
 def _can_manage_role(bot: commands.Bot, guild: discord.Guild, role: discord.Role) -> bool:
     """Return True if the bot's top role is above the target role."""
     me = guild.me
@@ -36,9 +40,15 @@ async def _assign_role_to_members(
             await member.add_roles(role, reason=f"!addrole by {ctx.author}")
             success += 1
         except discord.Forbidden:
-            await ctx.send(f"⚠️ Missing permission to assign {role.mention} to {member.mention}.")
+            await ctx.send(
+                f"⚠️ Missing permission to assign {role.mention} to {member.mention}.",
+                delete_after=_DELETE_AFTER,
+            )
         except discord.HTTPException as exc:
-            await ctx.send(f"⚠️ Failed to assign role to {member.mention}: {exc}")
+            await ctx.send(
+                f"⚠️ Failed to assign role to {member.mention}: {exc}",
+                delete_after=_DELETE_AFTER,
+            )
 
         # Avoid hitting the rate limit on large servers
         if i % 10 == 9:
@@ -78,33 +88,50 @@ class AddRole(commands.Cog):
         if not _can_manage_role(self.bot, guild, role):
             await ctx.send(
                 f"❌ I can't assign {role.mention} because my highest role is not above it. "
-                "Please move my role higher in the server settings."
+                "Please move my role higher in the server settings.",
+                delete_after=_DELETE_AFTER,
             )
             return
 
         # ── target: single member ─────────────────────────────────────
         if isinstance(target, discord.Member):
             if role in target.roles:
-                await ctx.send(f"ℹ️ {target.mention} already has {role.mention}.")
+                await ctx.send(
+                    f"ℹ️ {target.mention} already has {role.mention}.",
+                    delete_after=_DELETE_AFTER,
+                )
                 return
             try:
                 await target.add_roles(role, reason=f"!addrole by {ctx.author}")
-                await ctx.send(f"✅ Assigned {role.mention} to {target.mention}.")
+                await ctx.send(
+                    f"✅ Assigned {role.mention} to {target.mention}.",
+                    delete_after=_DELETE_AFTER,
+                )
             except discord.Forbidden:
-                await ctx.send("❌ I don't have permission to assign that role.")
+                await ctx.send(
+                    "❌ I don't have permission to assign that role.",
+                    delete_after=_DELETE_AFTER,
+                )
             except discord.HTTPException as exc:
-                await ctx.send(f"❌ Failed to assign role: {exc}")
+                await ctx.send(
+                    f"❌ Failed to assign role: {exc}",
+                    delete_after=_DELETE_AFTER,
+                )
             return
 
         # ── target: "all" keyword ─────────────────────────────────────
         if isinstance(target, str) and target.lower() == "all":
             members = [m for m in guild.members if not m.bot]
             if not members:
-                await ctx.send("ℹ️ No non-bot members found.")
+                await ctx.send(
+                    "ℹ️ No non-bot members found.",
+                    delete_after=_DELETE_AFTER,
+                )
                 return
 
             status_msg = await ctx.send(
-                f"⏳ Assigning {role.mention} to **{len(members)}** members, please wait…"
+                f"⏳ Assigning {role.mention} to **{len(members)}** members, please wait…",
+                delete_after=_BULK_STATUS_TTL,
             )
             success, skipped = await _assign_role_to_members(ctx, role, members)
             await status_msg.edit(
@@ -119,17 +146,24 @@ class AddRole(commands.Cog):
         if isinstance(target, discord.Role):
             source_role = target
             if source_role == role:
-                await ctx.send("⚠️ The source role and the role to assign are the same.")
+                await ctx.send(
+                    "⚠️ The source role and the role to assign are the same.",
+                    delete_after=_DELETE_AFTER,
+                )
                 return
 
             members = [m for m in source_role.members if not m.bot]
             if not members:
-                await ctx.send(f"ℹ️ No non-bot members have {source_role.mention}.")
+                await ctx.send(
+                    f"ℹ️ No non-bot members have {source_role.mention}.",
+                    delete_after=_DELETE_AFTER,
+                )
                 return
 
             status_msg = await ctx.send(
                 f"⏳ Assigning {role.mention} to **{len(members)}** member(s) who have "
-                f"{source_role.mention}, please wait…"
+                f"{source_role.mention}, please wait…",
+                delete_after=_BULK_STATUS_TTL,
             )
             success, skipped = await _assign_role_to_members(ctx, role, members)
             await status_msg.edit(
@@ -145,29 +179,41 @@ class AddRole(commands.Cog):
             "❌ Invalid target. Usage:\n"
             "`!addrole @Member @Role` — assign to one member\n"
             "`!addrole all @Role` — assign to everyone\n"
-            "`!addrole @ExistingRole @Role` — assign to everyone with a role"
+            "`!addrole @ExistingRole @Role` — assign to everyone with a role",
+            delete_after=_DELETE_AFTER,
         )
 
     @addrole.error
     async def addrole_error(self, ctx: commands.Context, error: commands.CommandError):
         if isinstance(error, commands.MissingPermissions):
-            await ctx.send("❌ You need the **Manage Roles** permission to use this command.")
+            await ctx.send(
+                "❌ You need the **Manage Roles** permission to use this command.",
+                delete_after=_DELETE_AFTER,
+            )
         elif isinstance(error, commands.MissingRequiredArgument):
             await ctx.send(
                 "❌ Missing arguments. Usage:\n"
                 "`!addrole @Member @Role`\n"
                 "`!addrole all @Role`\n"
-                "`!addrole @ExistingRole @Role`"
+                "`!addrole @ExistingRole @Role`",
+                delete_after=_DELETE_AFTER,
             )
         elif isinstance(error, commands.BadUnionArgument | commands.BadArgument):
             await ctx.send(
                 "❌ Couldn't resolve the target or role. Make sure you're mentioning a valid "
-                "member, role, or the word `all`, followed by the role to assign."
+                "member, role, or the word `all`, followed by the role to assign.",
+                delete_after=_DELETE_AFTER,
             )
         elif isinstance(error, commands.NoPrivateMessage):
-            await ctx.send("❌ This command can only be used inside a server.")
+            await ctx.send(
+                "❌ This command can only be used inside a server.",
+                delete_after=_DELETE_AFTER,
+            )
         else:
-            await ctx.send("❌ Something went wrong. Please try again.")
+            await ctx.send(
+                "❌ Something went wrong. Please try again.",
+                delete_after=_DELETE_AFTER,
+            )
             raise error
 
 
@@ -175,3 +221,4 @@ class AddRole(commands.Cog):
 
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(AddRole(bot))
+
