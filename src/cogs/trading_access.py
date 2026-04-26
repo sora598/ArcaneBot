@@ -99,7 +99,7 @@ async def setup_trading(
                 reason="Trading access role created by /setuptrading",
             )
         except discord.Forbidden:
-            await interaction.followup.send("I don't have permission to create roles.", ephemeral=True, delete_after=30)
+            await interaction.followup.send("I don't have permission to create roles.", ephemeral=True)
             return
 
     trading_channel = None
@@ -120,7 +120,7 @@ async def setup_trading(
                 reason="Private trading channel created by /setuptrading",
             )
         except discord.Forbidden:
-            await interaction.followup.send("I don't have permission to create channels.", ephemeral=True, delete_after=30)
+            await interaction.followup.send("I don't have permission to create channels.", ephemeral=True)
             return
     else:
         try:

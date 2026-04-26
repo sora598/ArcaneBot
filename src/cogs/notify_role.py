@@ -123,7 +123,7 @@ async def notifyrole(interaction: discord.Interaction, role: discord.Role):
     if BOT is not None:
         BOT.add_view(view, message_id=message.id)
 
-    await interaction.followup.send("✅ Notification role embed posted!", ephemeral=True, delete_after=30)
+    await interaction.followup.send("✅ Notification role embed posted!", ephemeral=True)
 
 
 @notifyrole.error

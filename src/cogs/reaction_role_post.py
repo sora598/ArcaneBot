@@ -146,7 +146,7 @@ class ReactionRolePostCog(commands.Cog):
         save_reaction_role_posts(self.reaction_role_posts)
         self.bot.add_view(view, message_id=posted_message.id)
 
-        await interaction.followup.send("✅ Role post created.", ephemeral=True, delete_after=30)
+        await interaction.followup.send("✅ Role post created.", ephemeral=True)
 
     @set_reactionrole.error
     async def set_reactionrole_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
