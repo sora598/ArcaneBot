@@ -21,9 +21,10 @@ PERIOD_CHOICES = [
 
 
 class SeaBeastHuntView(discord.ui.View):
-    def __init__(self, host_id: int):
+    def __init__(self, host_id: int, start_utc: datetime):
         super().__init__(timeout=None)
         self.host_id = host_id
+        self.start_utc = start_utc
 
     @discord.ui.button(label="Cancel Hunt", style=discord.ButtonStyle.danger, custom_id="seabeasthunt_cancel")
     async def cancel_hunt(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -39,6 +40,14 @@ class SeaBeastHuntView(discord.ui.View):
         if message is None:
             await interaction.response.send_message(
                 "I couldn't find the hunt message to cancel.",
+                ephemeral=True,
+                delete_after=30,
+            )
+            return
+
+        if datetime.now(timezone.utc) >= self.start_utc:
+            await interaction.response.send_message(
+                "This Sea Beast Hunt has already started and can no longer be cancelled.",
                 ephemeral=True,
                 delete_after=30,
             )
@@ -139,7 +148,7 @@ async def sea_beast_hunt_announcement(
     embed.add_field(name="Private Server", value=f"[Join Server]({link})", inline=True)
     embed.set_footer(text="Good luck and happy hunting.")
 
-    view = SeaBeastHuntView(host_id=interaction.user.id)
+    view = SeaBeastHuntView(host_id=interaction.user.id, start_utc=start_utc)
     announcement_view = view if seconds_until_start > 0 else None
 
     if ping_text:
