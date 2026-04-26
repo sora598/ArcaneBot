@@ -210,8 +210,20 @@ class LinkMonitor(commands.Cog):
             return
 
         reset_warnings(interaction.guild.id, member.id)
+
+        untimeout_note = ""
+        try:
+            await member.timeout(None, reason=f"Warnings cleared by {interaction.user}")
+            untimeout_note = " and their timeout has been removed"
+        except discord.Forbidden:
+            untimeout_note = ""
+        except discord.HTTPException:
+            untimeout_note = ""
+
         await interaction.response.send_message(
-            f"✅ Warnings for {member.mention} have been cleared.", ephemeral=True, delete_after=10
+            f"✅ Warnings for {member.mention} have been cleared{untimeout_note}.",
+            ephemeral=True,
+            delete_after=10,
         )
 
     @clearwarns.error
