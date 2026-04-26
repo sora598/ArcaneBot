@@ -148,7 +148,6 @@ async def set_welcome(
         await interaction.followup.send(
             f"✅ Welcome messages will be sent to {welcome_channel.mention}, new members will be directed to {redirect_channel.mention}, and the server rules have been posted there.",
             ephemeral=True,
-            delete_after=30,
         )
     except Exception as exc:
         print(f"setwelcome failed: {exc}")
