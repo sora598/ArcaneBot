@@ -16,22 +16,33 @@ from .reaction_role_post import (
 )
 
 WELCOME_STORE_PATH = Path(__file__).resolve().parent.parent / "welcome_config.json"
+
+# Single shared dict — never reassigned, only mutated in-place so all
+# references across the module always point to the same object.
 WELCOME_CONFIG: dict = {}
+_config_ready: bool = False
 
 
-def load_welcome_config() -> dict:
+def load_welcome_config() -> None:
+    """Load persisted config into the shared WELCOME_CONFIG dict in-place."""
+    global _config_ready
     try:
         with open(WELCOME_STORE_PATH, "r", encoding="utf-8") as f:
-            return json.load(f)
+            data = json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
+        data = {}
         with open(WELCOME_STORE_PATH, "w", encoding="utf-8") as f:
-            json.dump({}, f, indent=2)
-        return {}
+            json.dump(data, f, indent=2)
+
+    WELCOME_CONFIG.clear()
+    WELCOME_CONFIG.update(data)
+    _config_ready = True
 
 
-def save_welcome_config(cfg: dict):
+def save_welcome_config() -> None:
+    """Persist the current state of the shared WELCOME_CONFIG dict."""
     with open(WELCOME_STORE_PATH, "w", encoding="utf-8") as f:
-        json.dump(cfg, f, indent=2)
+        json.dump(WELCOME_CONFIG, f, indent=2)
 
 
 async def resolve_text_channel(guild: discord.Guild, channel_id: int | None) -> discord.TextChannel | None:
@@ -56,6 +67,7 @@ async def resolve_text_channel(guild: discord.Guild, channel_id: int | None) -> 
 @app_commands.describe(
     welcome_channel="Channel where the welcome message is posted",
     redirect_channel="Channel new members are directed to visit first",
+    post_rules="Whether to post the server rules embed in the redirect channel (default: True)",
     role="Optional role to toggle with a button under the rules embed",
     button_text="Optional custom text for the role button on this rules message",
 )
@@ -64,6 +76,7 @@ async def set_welcome(
     interaction: discord.Interaction,
     welcome_channel: discord.TextChannel,
     redirect_channel: discord.TextChannel,
+    post_rules: bool = True,
     role: discord.Role | None = None,
     button_text: str | None = None,
 ):
@@ -75,7 +88,7 @@ async def set_welcome(
             "welcome_channel_id": welcome_channel.id,
             "redirect_channel_id": redirect_channel.id,
         }
-        save_welcome_config(WELCOME_CONFIG)
+        save_welcome_config()
 
         rules_embed = discord.Embed(title="📜 Server Rules", color=discord.Color.red())
         rules_embed.add_field(name="1. Be Respectful", value="Treat everyone with respect. No harassment, bullying, hate speech, or discrimination of any kind.", inline=False)
@@ -121,16 +134,24 @@ async def set_welcome(
                         child.label = custom_label
                         break
 
-        try:
-            posted_message = await redirect_channel.send(embed=rules_embed, view=view)
-        except (discord.Forbidden, discord.HTTPException):
+        posted_message = None
+        if post_rules:
+            try:
+                posted_message = await redirect_channel.send(embed=rules_embed, view=view)
+            except (discord.Forbidden, discord.HTTPException):
+                await interaction.followup.send(
+                    f"⚠️ Config saved but I couldn't send the rules to {redirect_channel.mention}. Please check my permissions in that channel.",
+                    ephemeral=True,
+                )
+                return
+        elif role is not None:
             await interaction.followup.send(
-                f"⚠️ Config saved but I couldn't send the rules to {redirect_channel.mention}. Please check my permissions in that channel.",
+                "⚠️ A role button cannot be assigned when rules posting is disabled.",
                 ephemeral=True,
             )
             return
 
-        if role is not None and view is not None:
+        if role is not None and view is not None and posted_message is not None:
             reaction_role_posts = load_reaction_role_posts()
             reaction_role_posts[str(posted_message.id)] = {
                 "guild_id": interaction.guild_id,
@@ -141,8 +162,9 @@ async def set_welcome(
             save_reaction_role_posts(reaction_role_posts)
             interaction.client.add_view(view, message_id=posted_message.id)
 
+        rules_note = f" The server rules have been posted in {redirect_channel.mention}." if post_rules else ""
         await interaction.followup.send(
-            f"✅ Welcome messages will be sent to {welcome_channel.mention}, new members will be directed to {redirect_channel.mention}, and the server rules have been posted there.",
+            f"✅ Welcome messages will be sent to {welcome_channel.mention}, and new members will be directed to {redirect_channel.mention}.{rules_note}",
             ephemeral=True,
         )
     except Exception as exc:
@@ -169,6 +191,10 @@ async def set_welcome_error(interaction: discord.Interaction, error: app_command
 
 
 async def on_member_join(member: discord.Member):
+    if not _config_ready:
+        print("on_member_join fired before config was loaded — skipping.")
+        return
+
     guild_key = str(member.guild.id)
     cfg = WELCOME_CONFIG.get(guild_key)
     if not cfg:
@@ -193,17 +219,8 @@ async def on_member_join(member: discord.Member):
     except discord.Forbidden:
         print(f"Missing permission to send welcome message in {welcome_channel.id}")
 
-    try:
-        await welcome_channel.send(
-            f"{member.mention} welcome! Please continue in {redirect_channel.mention} to get started.",
-            delete_after=60,
-        )
-    except discord.Forbidden:
-        print(f"Missing permission to send follow-up welcome message in {welcome_channel.id}")
-
 
 async def setup(bot: commands.Bot):
-    global WELCOME_CONFIG
-    WELCOME_CONFIG = load_welcome_config()
+    load_welcome_config()
     bot.tree.add_command(set_welcome)
     bot.add_listener(on_member_join, "on_member_join")
