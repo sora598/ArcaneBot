@@ -5,5 +5,4 @@ if [ -f "$HOME/.env" ]; then
 fi
 
 # Navigate to the repository and pull
-cd "$REPO_PATH" || exit
 git pull origin main
