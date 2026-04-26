@@ -155,7 +155,6 @@ async def set_welcome(
         await interaction.followup.send(
             "❌ Something went wrong while configuring welcome settings. Please try again.",
             ephemeral=True,
-            delete_after=30,
         )
 
 
