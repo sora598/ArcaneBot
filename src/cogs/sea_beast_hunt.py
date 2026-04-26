@@ -140,15 +140,23 @@ async def sea_beast_hunt_announcement(
     embed.set_footer(text="Good luck and happy hunting.")
 
     view = SeaBeastHuntView(host_id=interaction.user.id)
+    announcement_view = view if seconds_until_start > 0 else None
 
     if ping_text:
-        await interaction.response.send_message(content=ping_text, embed=embed, view=view)
+        await interaction.response.send_message(content=ping_text, embed=embed, view=announcement_view)
     else:
-        await interaction.response.send_message(embed=embed, view=view)
+        await interaction.response.send_message(embed=embed, view=announcement_view)
 
     posted_message = await interaction.original_response()
 
+    async def _remove_cancel_button_once_started() -> None:
+        try:
+            await posted_message.edit(view=None)
+        except discord.DiscordException:
+            return
+
     if BOT is not None and notify_role and seconds_until_start == 0:
+        await _remove_cancel_button_once_started()
         channel = interaction.channel
         if channel is None:
             try:
@@ -196,6 +204,7 @@ async def sea_beast_hunt_announcement(
                 else:
                     await asyncio.sleep(start_delay)
 
+                await _remove_cancel_button_once_started()
                 await _send_ping(
                     f"{notify_role.mention} 🚨 The Sea Beast Hunt hosted by {interaction.user.mention} is starting **now**! "
                     f"[Join Server]({link})"
