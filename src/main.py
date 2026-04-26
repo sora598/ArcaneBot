@@ -29,10 +29,12 @@ def create_bot() -> commands.Bot:
     intents.guilds = True
     intents.members = True
     intents.reactions = True
+    intents.message_content = True
 
     bot = commands.Bot(
         command_prefix="!",
-        intents=intents
+        intents=intents,
+        help_command=None,
     )
 
     @bot.event
@@ -52,20 +54,6 @@ def create_bot() -> commands.Bot:
         try:
             synced = await bot.tree.sync()
             print(f"Globally synced {len(synced)} slash commands.")
-
-            for guild in bot.guilds:
-                try:
-                    bot.tree.copy_global_to(guild=guild)
-                    guild_synced = await bot.tree.sync(guild=guild)
-                    print(
-                        f"Guild sync ({guild.id}) -> "
-                        f"{len(guild_synced)} commands"
-                    )
-                except Exception as guild_error:
-                    print(
-                        f"Guild sync failed for "
-                        f"{guild.id}: {guild_error}"
-                    )
 
         except Exception as error:
             print(f"Failed to sync slash commands: {error}")

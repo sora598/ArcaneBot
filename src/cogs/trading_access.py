@@ -289,7 +289,9 @@ class TradingChannelGuard(commands.Cog):
             except discord.Forbidden:
                 print("Missing permissions to delete messages.")
 
-        await self.bot.process_commands(message)
+        # NOTE: Do NOT call process_commands here.
+        # commands.Bot's default on_message already handles it.
+        # Calling it again would invoke every prefix command twice.
                 
 async def setup(bot: commands.Bot):
     global TRADING_CONFIG, BOT

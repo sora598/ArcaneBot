@@ -79,7 +79,7 @@ class PrefixHelpCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    @commands.command(name="help-roles")
+    @commands.command(name="help")
     async def prefix_help(self, ctx: commands.Context):
         embed = discord.Embed(
             title="Prefix Command Help",
