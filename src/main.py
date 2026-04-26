@@ -14,6 +14,7 @@ EXTENSIONS = [
     "cogs.reaction_role_post",
     "cogs.trade_system",
     "cogs.sea_beast_hunt",
+    "cogs.link_monitor",
     "cogs.welcome",
     "cogs.trading_access",
     "cogs.announce",
