@@ -52,6 +52,13 @@ def create_bot() -> commands.Bot:
             return
 
         try:
+            # Remove any previously-synced guild commands so they don't
+            # appear duplicated alongside global commands.
+            for guild in bot.guilds:
+                bot.tree.clear_commands(guild=guild)
+                await bot.tree.sync(guild=guild)
+                print(f"Cleared guild commands for {guild.id}")
+
             synced = await bot.tree.sync()
             print(f"Globally synced {len(synced)} slash commands.")
 
