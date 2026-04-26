@@ -166,13 +166,11 @@ async def set_welcome_error(interaction: discord.Interaction, error: app_command
             await interaction.followup.send(
                 "❌ You need the **Administrator** permission to use this command.",
                 ephemeral=True,
-                delete_after=30,
             )
         else:
             await interaction.response.send_message(
                 "❌ You need the **Administrator** permission to use this command.",
                 ephemeral=True,
-                delete_after=30,
             )
 
 
