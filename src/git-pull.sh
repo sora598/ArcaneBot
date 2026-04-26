@@ -6,4 +6,4 @@ fi
 
 # Navigate to the repository and pull
 cd "$REPO_PATH" || exit
-git pull
+git pull origin main
