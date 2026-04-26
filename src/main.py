@@ -18,6 +18,7 @@ EXTENSIONS = [
     "cogs.trading_access",
     "cogs.announce",
     "cogs.voice_channels",
+    "cogs.add_role",
 ]
 
 SYNCED = False

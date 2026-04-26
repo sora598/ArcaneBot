@@ -7,29 +7,30 @@ from discord.ext import commands
 
 HELP_PAGES = [
     {
-        "title": "Bot Help",
-        "description": "Slash commands in this bot. VC commands are excluded here because they have their own `/vc help`.",
+        "title": "Bot & Server Setup",
+        "description": "Admin-only commands for configuring the bot and server. VC commands are excluded — use `/vc help` for those. Prefix commands like `!addrole` are also listed below.",
         "fields": [
-            ("/help", "Show this command list.", False),
-            ("/announce", "Send an anonymous embed message to a channel. Admin only.", False),
-            ("/setwelcome", "Set the welcome channel and rules/redirect setup. Admin only.", False),
+            ("/help", "Show this slash command help menu.", False),
+            ("/announce", "Send an anonymous embed message to a channel.", False),
+            ("/setwelcome", "Set the welcome channel and post the server rules embed.", False),
+            ("!addrole", "Assign a role to members. Usage: `!addrole @Member/@Role/all @Role`. Admin only.", False),
         ],
     },
     {
-        "title": "Roles & Notifications",
-        "description": "Commands for creating role opt-in messages and notification posts.",
+        "title": "Roles & Trading Setup",
+        "description": "Admin-only commands for setting up role toggles, notifications, and trading access.",
         "fields": [
-            ("/notifyrole", "Post a Sea Beast Hunt notification embed with a toggle button. Admin only.", False),
-            ("/setreactionrole", "Post a role toggle message with a button. Admin only.", False),
-            ("/seabeasthunt", "Post a Sea Beast Hunt announcement embed. Admin only.", False),
+            ("/notifyrole", "Post a Sea Beast Hunt notification embed with a toggle button.", False),
+            ("/setreactionrole", "Post a role toggle message with a button.", False),
+            ("/setuptrading", "Create the private trading channel, role, and opt-in post.", False),
         ],
     },
     {
-        "title": "Trading", 
-        "description": "Commands for trading setup and trade listings.",
+        "title": "User Commands",
+        "description": "Commands available to all members.",
         "fields": [
-            ("/setuptrading", "Create the private trading channel, role, and opt-in post. Admin only.", False),
-            ("/createtrade", "Create a trade listing with buttons and a discussion thread.", False),
+            ("/createtrade", "Create a trade listing with buttons and a private discussion thread.", False),
+            ("/seabeasthunt", "Post a Sea Beast Hunt announcement embed with scheduling and auto-pings.", False),
         ],
     },
 ]
