@@ -113,13 +113,15 @@ async def sea_beast_hunt_announcement(
     tz = timezone(timedelta(hours=8))
     now_local = datetime.now(tz)
     start_local = now_local.replace(hour=hour_24, minute=minute, second=0, microsecond=0)
-    if start_local <= now_local:
+    now_local_slot = now_local.replace(second=0, microsecond=0)
+    if start_local < now_local_slot:
         start_local += timedelta(days=1)
     start_utc = start_local.astimezone(timezone.utc)
     unix_ts = int(start_utc.timestamp())
 
     now_utc = datetime.now(timezone.utc)
-    minutes_until_start = max(0, int((start_utc - now_utc).total_seconds() / 60))
+    seconds_until_start = max(0, int((start_utc - now_utc).total_seconds()))
+    minutes_until_start = max(0, int(seconds_until_start / 60))
     discord_time = f"<t:{unix_ts}:t>"
     discord_relative = f"<t:{unix_ts}:R>"
 
@@ -146,23 +148,56 @@ async def sea_beast_hunt_announcement(
 
     posted_message = await interaction.original_response()
 
-    if BOT is not None and notify_role and minutes_until_start > 30:
-        delay = (minutes_until_start - 30) * 60
+    if BOT is not None and notify_role and seconds_until_start == 0:
+        channel = interaction.channel
+        if channel is None:
+            try:
+                channel = await BOT.fetch_channel(interaction.channel_id)
+            except discord.DiscordException:
+                channel = None
+
+        if channel is not None:
+            try:
+                await channel.send(
+                    f"{notify_role.mention} 🚨 The Sea Beast Hunt hosted by {interaction.user.mention} is starting **now**! "
+                    f"[Join Server]({link})"
+                )
+            except discord.DiscordException as exc:
+                print(f"Immediate sea beast ping failed: {exc}")
+
+    if BOT is not None and notify_role and seconds_until_start > 0:
+        t30_delay = max(0, seconds_until_start - (30 * 60)) if seconds_until_start > 30 * 60 else None
+        start_delay = seconds_until_start
+
+        async def _send_ping(message_text: str):
+            role = get_guild_notify_role(interaction.guild)
+            if role is None:
+                return
+            channel = interaction.channel
+            if channel is None:
+                try:
+                    channel = await BOT.fetch_channel(interaction.channel_id)
+                except discord.DiscordException:
+                    return
+            await channel.send(message_text)
 
         async def _schedule_ping():
             try:
-                await asyncio.sleep(delay)
-                role = get_guild_notify_role(interaction.guild)
-                if role is None:
-                    return
-                channel = interaction.channel
-                if channel is None:
-                    try:
-                        channel = await BOT.fetch_channel(interaction.channel_id)
-                    except discord.DiscordException:
-                        return
-                await channel.send(
-                    f"{role.mention} ⏰ The Sea Beast Hunt hosted by {interaction.user.mention} starts in **30 minutes**! "
+                if t30_delay is not None:
+                    await asyncio.sleep(t30_delay)
+                    await _send_ping(
+                        f"{notify_role.mention} ⏰ The Sea Beast Hunt hosted by {interaction.user.mention} starts in **30 minutes**! "
+                        f"[Join Server]({link})"
+                    )
+
+                    remaining = max(0, start_delay - t30_delay)
+                    if remaining > 0:
+                        await asyncio.sleep(remaining)
+                else:
+                    await asyncio.sleep(start_delay)
+
+                await _send_ping(
+                    f"{notify_role.mention} 🚨 The Sea Beast Hunt hosted by {interaction.user.mention} is starting **now**! "
                     f"[Join Server]({link})"
                 )
             except asyncio.CancelledError:
