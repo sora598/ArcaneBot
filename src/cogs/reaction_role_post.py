@@ -9,7 +9,7 @@ from discord import app_commands, ui
 from discord.ext import commands
 
 
-REACTION_ROLE_POSTS_PATH = Path(__file__).resolve().parent.parent / "reaction_role_posts.json"
+REACTION_ROLE_POSTS_PATH = Path(__file__).resolve().parent.parent / "data" / "reaction_role_posts.json"
 
 
 def load_reaction_role_posts() -> dict:

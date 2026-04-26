@@ -11,7 +11,7 @@ from discord.ext import commands
 
 from cogs.sea_beast_hunt import is_valid_roblox_share_link
 
-WARNINGS_PATH = Path(__file__).resolve().parent.parent / "warnings.json"
+WARNINGS_PATH = Path(__file__).resolve().parent.parent / "data" / "warnings.json"
 URL_REGEX = re.compile(r"https?://\S+", re.IGNORECASE)
 
 

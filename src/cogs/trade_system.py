@@ -9,8 +9,8 @@ import discord
 from discord import Interaction, app_commands, ui
 from discord.ext import commands
 
-ITEM_LIST_PATH = Path(__file__).resolve().parent.parent / "item_list.json"
-TRADE_STORE_PATH = Path(__file__).resolve().parent.parent / "active_trades.json"
+ITEM_LIST_PATH = Path(__file__).resolve().parent.parent / "data" / "item_list.json"
+TRADE_STORE_PATH = Path(__file__).resolve().parent.parent / "data" / "active_trades.json"
 BOT: commands.Bot | None = None
 ACTIVE_TRADES: dict[str, dict] = {}
 TRADES_RESTORED = False

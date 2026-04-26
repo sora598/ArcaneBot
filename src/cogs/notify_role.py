@@ -8,7 +8,7 @@ import discord
 from discord import app_commands, ui
 from discord.ext import commands
 
-NOTIFY_STORE_PATH = Path(__file__).resolve().parent.parent / "notify_roles.json"
+NOTIFY_STORE_PATH = Path(__file__).resolve().parent.parent / "data" / "notify_roles.json"
 BOT: commands.Bot | None = None
 NOTIFY_STORE: dict = {}
 

@@ -27,7 +27,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
 URL = "https://sailor-piece.vaultedvaluesx.com/value-list"
-OUTPUT_PATH = Path(__file__).with_name("item_list.json")
+OUTPUT_PATH = Path(__file__).resolve().parent / "data" / "item_list.json"
 TARGET_SELECTOR = "h3.w-full.truncate.px-1.text-center.font-semibold > span"
 
 

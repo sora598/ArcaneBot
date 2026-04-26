@@ -8,7 +8,7 @@ import asyncio
 from discord import app_commands
 from discord.ext import commands
 
-VOICE_OWNER_STORE_PATH = Path(__file__).resolve().parent.parent / "voice_owners.json"
+VOICE_OWNER_STORE_PATH = Path(__file__).resolve().parent.parent / "data" / "voice_owners.json"
 VOICE_OWNERS: dict[str, dict] = {}
 
 

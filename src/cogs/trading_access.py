@@ -7,7 +7,7 @@ import discord
 from discord import app_commands, ui
 from discord.ext import commands
 
-TRADING_STORE_PATH = Path(__file__).resolve().parent.parent / "trading_config.json"
+TRADING_STORE_PATH = Path(__file__).resolve().parent.parent / "data" / "trading_config.json"
 TRADING_CONFIG: dict = {}
 BOT: commands.Bot | None = None
 

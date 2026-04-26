@@ -1,8 +1,8 @@
 .env
 __pycache__
 /.venv
-/src/*.json
-!/src/item_list.json
+/src/data/*.json
+!/src/data/item_list.json
 
 # Testing files
 /tests/

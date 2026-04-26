@@ -15,7 +15,7 @@ from .reaction_role_post import (
     save_reaction_role_posts,
 )
 
-WELCOME_STORE_PATH = Path(__file__).resolve().parent.parent / "welcome_config.json"
+WELCOME_STORE_PATH = Path(__file__).resolve().parent.parent / "data" / "welcome_config.json"
 
 # Single shared dict — never reassigned, only mutated in-place so all
 # references across the module always point to the same object.
