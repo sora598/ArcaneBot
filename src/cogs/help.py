@@ -75,5 +75,31 @@ async def help_command(interaction: discord.Interaction):
     await interaction.response.send_message(embed=view._build_embed(), view=view, ephemeral=True, delete_after=30)
 
 
+class PrefixHelpCog(commands.Cog):
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
+
+    @commands.command(name="help")
+    async def prefix_help(self, ctx: commands.Context):
+        embed = discord.Embed(
+            title="Prefix Command Help",
+            description="These commands use the `!` prefix and are typed directly in chat.",
+            color=discord.Color.blurple(),
+        )
+        embed.add_field(
+            name="!addrole",
+            value="Assign a role to members.\n"
+                  "Usage: `!addrole @Member @Role` — assign to one member\n"
+                  "Usage: `!addrole all @Role` — assign to everyone\n"
+                  "Usage: `!addrole @ExistingRole @Role` — assign to everyone with a role\n"
+                  "Requires **Manage Roles** permission.",
+            inline=False,
+        )
+        embed.set_footer(text="For slash commands, use /help instead.")
+        await ctx.send(embed=embed)
+
+
 async def setup(bot: commands.Bot):
     bot.tree.add_command(help_command)
+    await bot.add_cog(PrefixHelpCog(bot))
+
