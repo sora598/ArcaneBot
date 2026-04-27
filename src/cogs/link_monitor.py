@@ -114,8 +114,8 @@ class LinkMonitor(commands.Cog):
             return
         if message.author.bot:
             return
-        if message.author.guild_permissions.manage_messages:
-            return
+#        if message.author.guild_permissions.manage_messages:
+#            return
         if not URL_REGEX.search(message.content):
             return
         if not contains_disallowed_link(message.content):
