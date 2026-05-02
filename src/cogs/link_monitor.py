@@ -353,6 +353,7 @@ class LinkMonitor(commands.Cog):
             )
 
     @app_commands.command(name="setwarnschannel", description="Set the channel where warning notifications will be sent.")
+    @app_commands.default_permissions(administrator=True)
     @app_commands.describe(channel="The channel to send warning notifications to (or leave empty to disable)")
     @app_commands.checks.has_permissions(administrator=True)
     async def setwarnschannel(self, interaction: discord.Interaction, channel: discord.TextChannel | None = None):
