@@ -74,11 +74,19 @@ def reset_warnings(guild_id: int, user_id: int) -> None:
 
 
 def contains_disallowed_link(content: str) -> bool:
+    """Return True if the message contains any link that is NOT a valid
+    Roblox private-server share link (https://www.roblox.com/share?code=...&type=Server).
+
+    The only URL that is allowed through is the exact same format accepted by
+    the /seabeasthunt command — validated by is_valid_roblox_share_link().
+    Every other URL, including plain Roblox game links, Discord invites,
+    shortened URLs, etc., is treated as disallowed.
+    """
     matches = URL_REGEX.findall(content)
     for url in matches:
         if not is_valid_roblox_share_link(url):
-            return True
-    return False
+            return True  # At least one disallowed URL found
+    return False  # All URLs (if any) are valid Roblox share links
 
 
 def ordinal(n: int) -> str:
