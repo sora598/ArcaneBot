@@ -12,6 +12,7 @@ from discord.ext import commands
 from cogs.sea_beast_hunt import is_valid_roblox_share_link
 
 WARNINGS_PATH = Path(__file__).resolve().parent.parent / "data" / "warnings.json"
+WARNINGS_CONFIG_PATH = Path(__file__).resolve().parent.parent / "data" / "warnings_config.json"
 URL_REGEX = re.compile(r"https?://\S+", re.IGNORECASE)
 
 
@@ -26,6 +27,20 @@ def load_warnings() -> dict:
 def save_warnings(data: dict) -> None:
     WARNINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(WARNINGS_PATH, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+
+
+def load_warnings_config() -> dict:
+    try:
+        with open(WARNINGS_CONFIG_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
+def save_warnings_config(data: dict) -> None:
+    WARNINGS_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with open(WARNINGS_CONFIG_PATH, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
 
 
@@ -67,12 +82,13 @@ def contains_disallowed_link(content: str) -> bool:
 
 
 def ordinal(n: int) -> str:
+    """Return the ordinal suffix (st, nd, rd, th) for a number."""
     if 11 <= n % 100 <= 13:
-        return f"{n}th"
+        return "th"
     return {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
 
 
-async def apply_warning(member: discord.Member, reason: str | None = None) -> tuple[int, str]:
+async def apply_warning(member: discord.Member, reason: str | None = None, link_text: str | None = None) -> tuple[int, str]:
     """Increment warnings and apply escalating moderation. Returns (count, action_taken)."""
     count = increment_warnings(member.guild.id, member.id)
 
@@ -93,15 +109,106 @@ async def apply_warning(member: discord.Member, reason: str | None = None) -> tu
         except discord.Forbidden:
             action = "1-hour timeout"
     elif count == 5:
-        action = "kick"
+        duration = timedelta(hours=12)
+        action = "12-hour timeout"
         try:
-            await member.kick(reason=reason or f"Link monitor: 5th offense")
+            until = datetime.now(timezone.utc) + duration
+            await member.timeout(until, reason=reason or f"Link monitor offense #{count}")
         except discord.Forbidden:
-            action = "kick"
+            action = "12-hour timeout"
+    elif count == 6:
+        duration = timedelta(hours=12)
+        action = "12-hour timeout"
+        try:
+            until = datetime.now(timezone.utc) + duration
+            await member.timeout(until, reason=reason or f"Link monitor offense #{count}")
+        except discord.Forbidden:
+            action = "12-hour timeout"
+    elif count == 7:
+        duration = timedelta(hours=24)
+        action = "24-hour timeout"
+        try:
+            until = datetime.now(timezone.utc) + duration
+            await member.timeout(until, reason=reason or f"Link monitor offense #{count}")
+        except discord.Forbidden:
+            action = "24-hour timeout"
+    elif count == 8:
+        duration = timedelta(hours=36)
+        action = "36-hour timeout"
+        try:
+            until = datetime.now(timezone.utc) + duration
+            await member.timeout(until, reason=reason or f"Link monitor offense #{count}")
+        except discord.Forbidden:
+            action = "36-hour timeout"
+    elif count == 9:
+        duration = timedelta(days=7)
+        action = "1-week timeout"
+        try:
+            until = datetime.now(timezone.utc) + duration
+            await member.timeout(until, reason=reason or f"Link monitor offense #{count}")
+        except discord.Forbidden:
+            action = "1-week timeout"
+    elif count == 10:
+        action = "ban"
+        try:
+            await member.ban(reason=reason or f"Link monitor: 10th offense")
+        except discord.Forbidden:
+            action = "ban"
     else:
         action = "warning recorded"
 
+    # Send notification to warnings channel
+    await send_warning_notification(member.guild, member, count, action, reason, link_text)
+
     return count, action
+
+
+async def send_warning_notification(
+    guild: discord.Guild,
+    member: discord.Member,
+    count: int,
+    action: str,
+    reason: str | None = None,
+    link_text: str | None = None,
+) -> None:
+    """Send a warning notification to the configured warnings channel."""
+    try:
+        config = load_warnings_config()
+        guild_config = config.get(str(guild.id))
+        
+        if not guild_config or "notification_channel_id" not in guild_config:
+            return
+        
+        channel_id = guild_config["notification_channel_id"]
+        channel = guild.get_channel(channel_id)
+        if channel is None:
+            return
+        
+        embed = discord.Embed(
+            title="⚠️ Member Warning",
+            color=discord.Color.yellow(),
+            timestamp=datetime.now(timezone.utc),
+        )
+        embed.add_field(name="Member", value=f"{member.mention} ({member})", inline=False)
+        embed.add_field(name="Offense Count", value=f"**{count}{ordinal(count)}** offense", inline=True)
+        embed.add_field(name="Action Taken", value=f"**{action}**", inline=True)
+        
+        if reason:
+            embed.add_field(name="Reason", value=reason, inline=False)
+        
+        if link_text:
+            # Truncate link if too long for embed field
+            display_link = link_text[:1024] if len(link_text) > 1024 else link_text
+            embed.add_field(name="Link Sent", value=f"```{display_link}```", inline=False)
+        
+        embed.set_footer(text=f"User ID: {member.id}")
+        await channel.send(embed=embed)
+    except discord.Forbidden:
+        pass
+    except discord.HTTPException:
+        pass
+    except Exception:
+        pass
 
 
 class LinkMonitor(commands.Cog):
@@ -114,12 +221,14 @@ class LinkMonitor(commands.Cog):
             return
         if message.author.bot:
             return
-        if message.author.guild_permissions.manage_messages:
-            return
+        # Remove permission check - warnings should be recorded for EVERYONE
         if not URL_REGEX.search(message.content):
             return
         if not contains_disallowed_link(message.content):
             return
+
+        # Extract the link text
+        link_text = URL_REGEX.search(message.content).group()
 
         # Delete offending message immediately
         try:
@@ -133,7 +242,7 @@ class LinkMonitor(commands.Cog):
         if member is None:
             return
 
-        count, action = await apply_warning(member, reason="Sent prohibited link")
+        count, action = await apply_warning(member, reason="Sent prohibited link", link_text=link_text)
 
         # Vanishing channel warning
         try:
@@ -231,6 +340,121 @@ class LinkMonitor(commands.Cog):
         if isinstance(error, app_commands.MissingPermissions):
             await interaction.response.send_message(
                 "❌ This command is restricted to server administrators.",
+                ephemeral=True,
+                delete_after=10,
+            )
+
+    @app_commands.command(name="setwarnschannel", description="Set the channel where warning notifications will be sent.")
+    @app_commands.describe(channel="The channel to send warning notifications to (or leave empty to disable)")
+    @app_commands.checks.has_permissions(administrator=True)
+    async def setwarnschannel(self, interaction: discord.Interaction, channel: discord.TextChannel | None = None):
+        if interaction.guild is None:
+            await interaction.response.send_message(
+                "This command can only be used in a server.", ephemeral=True, delete_after=10
+            )
+            return
+
+        config = load_warnings_config()
+        guild_config = config.get(str(interaction.guild.id), {})
+
+        if channel is None:
+            # Disable warnings channel
+            if "notification_channel_id" in guild_config:
+                del guild_config["notification_channel_id"]
+                config[str(interaction.guild.id)] = guild_config
+                save_warnings_config(config)
+                await interaction.response.send_message(
+                    "✅ Warning notifications have been **disabled**.",
+                    ephemeral=True,
+                    delete_after=10,
+                )
+            else:
+                await interaction.response.send_message(
+                    "❌ No warnings channel is currently set.",
+                    ephemeral=True,
+                    delete_after=10,
+                )
+        else:
+            # Set warnings channel
+            guild_config["notification_channel_id"] = channel.id
+            config[str(interaction.guild.id)] = guild_config
+            save_warnings_config(config)
+            await interaction.response.send_message(
+                f"✅ Warning notifications will now be sent to {channel.mention}.",
+                ephemeral=True,
+                delete_after=10,
+            )
+
+    @setwarnschannel.error
+    async def setwarnschannel_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
+        if isinstance(error, app_commands.MissingPermissions):
+            await interaction.response.send_message(
+                "❌ This command is restricted to server administrators.",
+                ephemeral=True,
+                delete_after=10,
+            )
+
+    @app_commands.command(name="viewwarns", description="View all members with warnings in this server.")
+    @app_commands.checks.has_permissions(manage_messages=True)
+    async def viewwarns(self, interaction: discord.Interaction):
+        if interaction.guild is None:
+            await interaction.response.send_message(
+                "This command can only be used in a server.", ephemeral=True, delete_after=10
+            )
+            return
+
+        await interaction.response.defer(ephemeral=True)
+
+        data = load_warnings()
+        guild_warnings = data.get(str(interaction.guild.id), {})
+
+        if not guild_warnings:
+            await interaction.followup.send(
+                "✅ No members have warnings in this server.",
+                ephemeral=True,
+            )
+            return
+
+        # Sort by warning count (highest first)
+        sorted_warnings = sorted(guild_warnings.items(), key=lambda x: x[1], reverse=True)
+
+        embed = discord.Embed(
+            title="📋 Server Warnings List",
+            description=f"Total members with warnings: {len(sorted_warnings)}",
+            color=discord.Color.yellow(),
+            timestamp=datetime.now(timezone.utc),
+        )
+
+        # Build warning list
+        warning_text = ""
+        for user_id, warning_count in sorted_warnings:
+            try:
+                user = await interaction.client.fetch_user(int(user_id))
+                user_display = f"{user.mention} ({user})"
+            except (discord.NotFound, discord.HTTPException):
+                user_display = f"<@{user_id}> (User ID: {user_id})"
+
+            warning_text += f"\n{user_display} — **{warning_count}{ordinal(warning_count)}** offense"
+
+        # Split into multiple fields if too long
+        if len(warning_text) > 1024:
+            fields = [warning_text[i : i + 1024] for i in range(0, len(warning_text), 1024)]
+            for idx, field_text in enumerate(fields, 1):
+                embed.add_field(
+                    name=f"Warnings (Part {idx})" if idx > 1 else "Warnings",
+                    value=field_text,
+                    inline=False,
+                )
+        else:
+            embed.add_field(name="Warnings", value=warning_text, inline=False)
+
+        await interaction.followup.send(embed=embed, ephemeral=True)
+
+    @viewwarns.error
+    async def viewwarns_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
+        if isinstance(error, app_commands.MissingPermissions):
+            await interaction.response.send_message(
+                "❌ You need **Manage Messages** permission to use this command.",
                 ephemeral=True,
                 delete_after=10,
             )
